@@ -44,7 +44,9 @@ export default function LoginScreen() {
       const msg =
         err.response?.data?.non_field_errors?.[0] ||
         err.response?.data?.detail ||
-        'Authentication failed. Please verify your credentials.'
+        (err.message === 'Network Error'
+          ? 'Network error: Cannot reach the backend API at http://localhost:8000. Ensure Django is running.'
+          : err.message || 'Authentication failed. Please verify your credentials.')
       setErrorMessage(msg)
     } finally {
       setSubmitting(false)
@@ -53,7 +55,7 @@ export default function LoginScreen() {
 
   const fillQuickCredentials = (devEmail: string) => {
     setEmail(devEmail)
-    setPassword('Dev@123456')
+    setPassword('123456')
     setErrorMessage(null)
   }
 
@@ -195,11 +197,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
-    shadowColor: '#10b981',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 8,
+    ...Platform.select({
+      web: { boxShadow: '0 6px 10px rgba(16, 185, 129, 0.35)' },
+      default: {
+        shadowColor: '#10b981',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.35,
+        shadowRadius: 10,
+        elevation: 8,
+      },
+    }),
   },
   logoText: {
     color: '#020617',
@@ -224,11 +231,16 @@ const styles = StyleSheet.create({
     padding: 20,
     borderWidth: 1,
     borderColor: '#1e293b',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.5,
-    shadowRadius: 16,
-    elevation: 10,
+    ...Platform.select({
+      web: { boxShadow: '0 10px 16px rgba(0, 0, 0, 0.5)' },
+      default: {
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.5,
+        shadowRadius: 16,
+        elevation: 10,
+      },
+    }),
   },
   formTitle: {
     fontSize: 18,
@@ -276,11 +288,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 8,
-    shadowColor: '#10b981',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    ...Platform.select({
+      web: { boxShadow: '0 4px 8px rgba(16, 185, 129, 0.3)' },
+      default: {
+        shadowColor: '#10b981',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
+      },
+    }),
   },
   buttonDisabled: {
     opacity: 0.6,

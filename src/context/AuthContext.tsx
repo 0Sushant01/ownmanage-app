@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import * as SecureStore from 'expo-secure-store'
+import storage from '../utils/storage'
 import apiClient from '../api/client'
 import type { User, UserRole, BusinessSummary, EmployeeSummary } from '../types'
 
@@ -25,7 +25,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loadCurrentUser = async () => {
     try {
-      const token = await SecureStore.getItemAsync('ownmanage_access_token')
+      const token = await storage.getItem('ownmanage_access_token')
       if (!token) {
         setLoading(false)
         return
@@ -37,12 +37,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setBusiness(res.data.business)
       setEmployee(res.data.employee)
       if (res.data.business?.id) {
-        await SecureStore.setItemAsync('ownmanage_business_id', res.data.business.id)
+        await storage.setItem('ownmanage_business_id', res.data.business.id)
       }
     } catch {
-      await SecureStore.deleteItemAsync('ownmanage_access_token')
-      await SecureStore.deleteItemAsync('ownmanage_refresh_token')
-      await SecureStore.deleteItemAsync('ownmanage_business_id')
+      await storage.deleteItem('ownmanage_access_token')
+      await storage.deleteItem('ownmanage_refresh_token')
+      await storage.deleteItem('ownmanage_business_id')
       setUser(null)
       setRole(null)
       setBusiness(null)
@@ -60,10 +60,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const res = await apiClient.post('/auth/login/', { email, password })
     const { tokens, user, role, business, employee } = res.data
 
-    await SecureStore.setItemAsync('ownmanage_access_token', tokens.access)
-    await SecureStore.setItemAsync('ownmanage_refresh_token', tokens.refresh)
+    await storage.setItem('ownmanage_access_token', tokens.access)
+    await storage.setItem('ownmanage_refresh_token', tokens.refresh)
     if (business?.id) {
-      await SecureStore.setItemAsync('ownmanage_business_id', business.id)
+      await storage.setItem('ownmanage_business_id', business.id)
     }
 
     setUser(user)
@@ -76,16 +76,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
-      const refresh = await SecureStore.getItemAsync('ownmanage_refresh_token')
+      const refresh = await storage.getItem('ownmanage_refresh_token')
       if (refresh) {
         await apiClient.post('/auth/logout/', { refresh })
       }
     } catch {
       // Ignore network error on logout
     } finally {
-      await SecureStore.deleteItemAsync('ownmanage_access_token')
-      await SecureStore.deleteItemAsync('ownmanage_refresh_token')
-      await SecureStore.deleteItemAsync('ownmanage_business_id')
+      await storage.deleteItem('ownmanage_access_token')
+      await storage.deleteItem('ownmanage_refresh_token')
+      await storage.deleteItem('ownmanage_business_id')
       setUser(null)
       setRole(null)
       setBusiness(null)

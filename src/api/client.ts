@@ -1,5 +1,5 @@
 import axios, { type AxiosInstance, type InternalAxiosRequestConfig } from 'axios'
-import * as SecureStore from 'expo-secure-store'
+import storage from '../utils/storage'
 
 /**
  * Centralized Axios API client instance for OwnManage Mobile App.
@@ -16,20 +16,20 @@ export const apiClient: AxiosInstance = axios.create({
   },
 })
 
-// Request interceptor: Attach JWT Bearer Token and active business header from SecureStore
+// Request interceptor: Attach JWT Bearer Token and active business header from storage
 apiClient.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     try {
-      const token = await SecureStore.getItemAsync('ownmanage_access_token')
+      const token = await storage.getItem('ownmanage_access_token')
       if (token) {
         config.headers.Authorization = `Bearer ${token}`
       }
-      const bizId = await SecureStore.getItemAsync('ownmanage_business_id')
+      const bizId = await storage.getItem('ownmanage_business_id')
       if (bizId) {
         config.headers['X-Business-ID'] = bizId
       }
     } catch {
-      // SecureStore may fail in SSR / test environments
+      // Storage may fail in SSR / test environments
     }
     return config
   },
