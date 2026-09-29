@@ -20,6 +20,7 @@ export default function LoginScreen() {
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
@@ -111,14 +112,23 @@ export default function LoginScreen() {
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Password</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="••••••••"
-                placeholderTextColor="#64748b"
-                secureTextEntry
-                value={password}
-                onChangeText={setPassword}
-              />
+              <View style={styles.passwordContainer}>
+                <TextInput
+                  style={[styles.input, { flex: 1, paddingRight: 45 }]}
+                  placeholder="••••••••"
+                  placeholderTextColor="#64748b"
+                  secureTextEntry={!showPassword}
+                  value={password}
+                  onChangeText={setPassword}
+                />
+                <TouchableOpacity
+                  style={styles.eyeButton}
+                  onPress={() => setShowPassword(!showPassword)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.eyeButtonText}>{showPassword ? 'HIDE' : 'SHOW'}</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             <TouchableOpacity
@@ -280,6 +290,23 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     color: '#ffffff',
     fontSize: 15,
+  },
+  passwordContainer: {
+    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  eyeButton: {
+    position: 'absolute',
+    right: 12,
+    padding: 6,
+    zIndex: 10,
+  },
+  eyeButtonText: {
+    color: '#10b981',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   primaryButton: {
     backgroundColor: '#10b981',
