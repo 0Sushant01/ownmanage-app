@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   RefreshControl,
   Modal,
@@ -14,8 +13,12 @@ import {
 } from 'react-native'
 import apiClient from '../../src/api/client'
 import type { LeaveRequest, LeaveType } from '../../src/types'
+import { Screen } from '../../src/components/Screen'
+import { useAppTheme } from '../../src/context/ThemeContext'
+import { getCardShadow } from '../../src/theme'
 
 export default function LeaveScreen() {
+  const { colors, isDark } = useAppTheme()
   const [leaves, setLeaves] = useState<LeaveRequest[]>([])
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([])
   const [loading, setLoading] = useState(true)
@@ -102,100 +105,129 @@ export default function LeaveScreen() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'APPROVED':
-        return { bg: 'rgba(16, 185, 129, 0.15)', text: '#10b981', border: '#10b981' }
+        return {
+          bg: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.12)',
+          text: colors.success,
+          border: colors.success,
+        }
       case 'PENDING':
-        return { bg: 'rgba(245, 158, 11, 0.15)', text: '#fbbf24', border: '#fbbf24' }
+        return {
+          bg: isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.12)',
+          text: colors.warning,
+          border: colors.warning,
+        }
       case 'REJECTED':
-        return { bg: 'rgba(225, 29, 72, 0.15)', text: '#f43f5e', border: '#f43f5e' }
+        return {
+          bg: isDark ? 'rgba(225, 29, 72, 0.15)' : 'rgba(225, 29, 72, 0.12)',
+          text: colors.danger,
+          border: colors.danger,
+        }
       default:
-        return { bg: '#1e293b', text: '#94a3b8', border: '#334155' }
+        return {
+          bg: colors.bgMuted,
+          text: colors.textMuted,
+          border: colors.border,
+        }
     }
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <Screen>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#10b981" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
       >
         {/* Top Action Header */}
         <View style={styles.topBar}>
           <TouchableOpacity
-            style={styles.applyButton}
+            style={[styles.applyButton, { backgroundColor: colors.accent }]}
             onPress={() => setApplyModalOpen(true)}
             activeOpacity={0.8}
           >
-            <Text style={styles.applyButtonText}>[ Apply Leave ]</Text>
+            <Text style={[styles.applyButtonText, { color: isDark ? colors.accentDark : '#ffffff' }]}>+ Apply For Leave</Text>
           </TouchableOpacity>
         </View>
 
         {/* Filter Tabs */}
-        <View style={styles.tabsRow}>
-          {['', 'PENDING', 'APPROVED', 'REJECTED'].map((st) => (
-            <TouchableOpacity
-              key={st}
-              style={[styles.tabItem, statusFilter === st && styles.tabItemActive]}
-              onPress={() => setStatusFilter(st)}
-            >
-              <Text
+        <View style={[styles.tabsRow, { backgroundColor: colors.bgElevated, borderColor: colors.border }]}>
+          {['', 'PENDING', 'APPROVED', 'REJECTED'].map((st) => {
+            const isActive = statusFilter === st
+            return (
+              <TouchableOpacity
+                key={st}
                 style={[
-                  styles.tabItemText,
-                  statusFilter === st && styles.tabItemTextActive,
+                  styles.tabItem,
+                  isActive && { backgroundColor: isDark ? colors.bgMuted : 'rgba(5, 150, 105, 0.12)' },
                 ]}
+                onPress={() => setStatusFilter(st)}
               >
-                {st || 'All'}
-              </Text>
-            </TouchableOpacity>
-          ))}
+                <Text
+                  style={[
+                    styles.tabItemText,
+                    { color: isActive ? colors.accent : colors.textMuted },
+                  ]}
+                >
+                  {st || 'All'}
+                </Text>
+              </TouchableOpacity>
+            )
+          })}
         </View>
 
         {loading ? (
           <View style={styles.loadingBox}>
-            <ActivityIndicator size="large" color="#10b981" />
-            <Text style={styles.loadingText}>Fetching leaves...</Text>
+            <ActivityIndicator size="large" color={colors.accent} />
+            <Text style={[styles.loadingText, { color: colors.textMuted }]}>Fetching leaves...</Text>
           </View>
         ) : error ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
+          <View style={[styles.errorBox, { backgroundColor: isDark ? 'rgba(225, 29, 72, 0.15)' : '#fee2e2', borderColor: colors.danger }]}>
+            <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>
           </View>
         ) : leaves.length === 0 ? (
           <View style={styles.emptyBox}>
             <Text style={styles.emptyIcon}>🏖️</Text>
-            <Text style={styles.emptyTitle}>No Leave Applications</Text>
-            <Text style={styles.emptySubtitle}>You have no submitted leave requests in this category.</Text>
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>No Leave Applications</Text>
+            <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>You have no submitted leave requests in this category.</Text>
           </View>
         ) : (
           <View style={styles.leaveList}>
             {leaves.map((item) => {
-              const colors = getStatusColor(item.status)
+              const statusColors = getStatusColor(item.status)
               return (
-                <View key={item.id} style={styles.leaveCard}>
+                <View
+                  key={item.id}
+                  style={[
+                    styles.leaveCard,
+                    { backgroundColor: colors.bgElevated, borderColor: colors.border },
+                    getCardShadow(isDark),
+                  ]}
+                >
                   <View style={styles.leaveCardHeader}>
-                    <Text style={styles.leaveTypeName}>
+                    <Text style={[styles.leaveTypeName, { color: colors.text }]}>
                       {item.leave_type_name} ({item.leave_type_code})
                     </Text>
                     <View
                       style={[
                         styles.statusBadge,
-                        { backgroundColor: colors.bg, borderColor: colors.border },
+                        { backgroundColor: statusColors.bg, borderColor: statusColors.border },
                       ]}
                     >
-                      <Text style={[styles.statusBadgeText, { color: colors.text }]}>
+                      <Text style={[styles.statusBadgeText, { color: statusColors.text }]}>
                         {item.status}
                       </Text>
                     </View>
                   </View>
 
-                  <Text style={styles.leaveDates}>
+                  <Text style={[styles.leaveDates, { color: colors.accent }]}>
                     {item.start_date} → {item.end_date}
                   </Text>
 
-                  <Text style={styles.leaveReason} numberOfLines={2}>
+                  <Text style={[styles.leaveReason, { color: colors.textMuted }]} numberOfLines={2}>
                     {item.reason}
                   </Text>
 
                   {item.status === 'REJECTED' && item.rejection_reason && (
-                    <Text style={styles.rejectionNotice}>
+                    <Text style={[styles.rejectionNotice, { color: colors.danger }]}>
                       Rejection note: {item.rejection_reason}
                     </Text>
                   )}
@@ -214,112 +246,119 @@ export default function LeaveScreen() {
         onRequestClose={() => setApplyModalOpen(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Apply For Leave</Text>
+          <View style={[styles.modalCard, { backgroundColor: colors.bgElevated, borderColor: colors.border }, getCardShadow(isDark)]}>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Apply For Leave</Text>
               <TouchableOpacity onPress={() => setApplyModalOpen(false)}>
-                <Text style={styles.closeIcon}>✕</Text>
+                <Text style={[styles.closeIcon, { color: colors.textMuted }]}>✕</Text>
               </TouchableOpacity>
             </View>
 
             {applyError && (
-              <View style={styles.errorBoxModal}>
-                <Text style={styles.errorTextModal}>{applyError}</Text>
+              <View style={[styles.errorBoxModal, { backgroundColor: isDark ? 'rgba(225, 29, 72, 0.15)' : '#fee2e2', borderColor: colors.danger }]}>
+                <Text style={[styles.errorTextModal, { color: colors.danger }]}>{applyError}</Text>
               </View>
             )}
 
             <ScrollView style={{ maxHeight: 400 }}>
               <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Select Leave Type</Text>
+                <Text style={[styles.formLabel, { color: colors.textMuted }]}>Select Leave Type</Text>
                 <View style={styles.typesRow}>
-                  {leaveTypes.map((t) => (
-                    <TouchableOpacity
-                      key={t.id}
-                      style={[
-                        styles.typePill,
-                        form.leave_type === t.id && styles.typePillActive,
-                      ]}
-                      onPress={() => setForm({ ...form, leave_type: t.id })}
-                    >
-                      <Text
+                  {leaveTypes.map((t) => {
+                    const isSelected = form.leave_type === t.id
+                    return (
+                      <TouchableOpacity
+                        key={t.id}
                         style={[
-                          styles.typePillText,
-                          form.leave_type === t.id && styles.typePillTextActive,
+                          styles.typePill,
+                          {
+                            backgroundColor: isSelected
+                              ? isDark ? 'rgba(16, 185, 129, 0.2)' : 'rgba(5, 150, 105, 0.15)'
+                              : colors.bgMuted,
+                            borderColor: isSelected ? colors.accent : colors.border,
+                          },
                         ]}
+                        onPress={() => setForm({ ...form, leave_type: t.id })}
                       >
-                        {t.name}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                        <Text
+                          style={[
+                            styles.typePillText,
+                            { color: isSelected ? colors.accent : colors.textMuted },
+                          ]}
+                        >
+                          {t.name}
+                        </Text>
+                      </TouchableOpacity>
+                    )
+                  })}
                 </View>
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Start Date (YYYY-MM-DD)</Text>
+                <Text style={[styles.formLabel, { color: colors.textMuted }]}>Start Date (YYYY-MM-DD)</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { backgroundColor: colors.bg, borderColor: colors.border, color: colors.text }]}
                   value={form.start_date}
                   onChangeText={(text) => setForm({ ...form, start_date: text })}
                   placeholder="2026-09-23"
-                  placeholderTextColor="#64748b"
+                  placeholderTextColor={colors.textFaint}
                 />
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>End Date (YYYY-MM-DD)</Text>
+                <Text style={[styles.formLabel, { color: colors.textMuted }]}>End Date (YYYY-MM-DD)</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { backgroundColor: colors.bg, borderColor: colors.border, color: colors.text }]}
                   value={form.end_date}
                   onChangeText={(text) => setForm({ ...form, end_date: text })}
                   placeholder="2026-09-24"
-                  placeholderTextColor="#64748b"
+                  placeholderTextColor={colors.textFaint}
                 />
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Reason</Text>
+                <Text style={[styles.formLabel, { color: colors.textMuted }]}>Reason</Text>
                 <TextInput
-                  style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+                  style={[
+                    styles.input,
+                    { height: 80, textAlignVertical: 'top', backgroundColor: colors.bg, borderColor: colors.border, color: colors.text },
+                  ]}
                   value={form.reason}
                   onChangeText={(text) => setForm({ ...form, reason: text })}
                   placeholder="State the reason for leave..."
-                  placeholderTextColor="#64748b"
+                  placeholderTextColor={colors.textFaint}
                   multiline
                 />
               </View>
             </ScrollView>
 
-            <View style={styles.modalActions}>
+            <View style={[styles.modalActions, { borderTopColor: colors.border }]}>
               <TouchableOpacity
-                style={styles.cancelButton}
+                style={[styles.cancelButton, { backgroundColor: colors.bgMuted }]}
                 onPress={() => setApplyModalOpen(false)}
               >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
+                <Text style={[styles.cancelButtonText, { color: colors.textMuted }]}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.submitButton, applying && styles.buttonDisabled]}
+                style={[styles.submitButton, { backgroundColor: colors.accent }, applying && styles.buttonDisabled]}
                 onPress={handleApply}
                 disabled={applying}
               >
                 {applying ? (
-                  <ActivityIndicator color="#020617" />
+                  <ActivityIndicator color={isDark ? colors.accentDark : '#ffffff'} />
                 ) : (
-                  <Text style={styles.submitButtonText}>Submit Application</Text>
+                  <Text style={[styles.submitButtonText, { color: isDark ? colors.accentDark : '#ffffff' }]}>Submit Application</Text>
                 )}
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </Screen>
   )
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#020617',
-  },
   scrollContent: {
     padding: 20,
   },
@@ -327,35 +366,21 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   applyButton: {
-    backgroundColor: '#10b981',
     paddingVertical: 14,
     borderRadius: 16,
     alignItems: 'center',
-    ...Platform.select({
-      web: { boxShadow: '0 4px 8px rgba(16, 185, 129, 0.3)' },
-      default: {
-        shadowColor: '#10b981',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 4,
-      },
-    }),
   },
   applyButtonText: {
-    color: '#020617',
     fontSize: 15,
     fontWeight: '800',
     letterSpacing: 0.5,
   },
   tabsRow: {
     flexDirection: 'row',
-    backgroundColor: '#0f172a',
     borderRadius: 14,
     padding: 4,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#1e293b',
   },
   tabItem: {
     flex: 1,
@@ -363,35 +388,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 10,
   },
-  tabItemActive: {
-    backgroundColor: '#1e293b',
-  },
   tabItemText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#64748b',
-  },
-  tabItemTextActive: {
-    color: '#ffffff',
   },
   loadingBox: {
     paddingVertical: 60,
     alignItems: 'center',
   },
   loadingText: {
-    color: '#94a3b8',
     fontSize: 13,
     marginTop: 12,
   },
   errorBox: {
-    backgroundColor: 'rgba(225, 29, 72, 0.15)',
-    borderColor: '#e11d48',
     borderWidth: 1,
     padding: 16,
     borderRadius: 12,
   },
   errorText: {
-    color: '#fda4af',
     fontSize: 13,
     textAlign: 'center',
   },
@@ -404,12 +418,10 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   emptyTitle: {
-    color: '#ffffff',
     fontSize: 16,
     fontWeight: '700',
   },
   emptySubtitle: {
-    color: '#64748b',
     fontSize: 13,
     marginTop: 4,
   },
@@ -417,11 +429,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   leaveCard: {
-    backgroundColor: '#0f172a',
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#1e293b',
   },
   leaveCardHeader: {
     flexDirection: 'row',
@@ -432,7 +442,6 @@ const styles = StyleSheet.create({
   leaveTypeName: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#ffffff',
   },
   statusBadge: {
     paddingHorizontal: 10,
@@ -446,65 +455,54 @@ const styles = StyleSheet.create({
   },
   leaveDates: {
     fontSize: 13,
-    color: '#10b981',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     marginBottom: 6,
   },
   leaveReason: {
     fontSize: 13,
-    color: '#94a3b8',
   },
   rejectionNotice: {
     marginTop: 8,
     fontSize: 12,
-    color: '#f43f5e',
     fontStyle: 'italic',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(2, 6, 23, 0.85)',
+    backgroundColor: 'rgba(2, 6, 23, 0.75)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   modalCard: {
-    backgroundColor: '#0f172a',
     borderRadius: 24,
     padding: 24,
     width: '100%',
     maxWidth: 400,
     borderWidth: 1,
-    borderColor: '#1e293b',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#1e293b',
     paddingBottom: 14,
     marginBottom: 16,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#ffffff',
   },
   closeIcon: {
     fontSize: 18,
-    color: '#94a3b8',
     padding: 4,
   },
   errorBoxModal: {
-    backgroundColor: 'rgba(225, 29, 72, 0.15)',
-    borderColor: '#e11d48',
     borderWidth: 1,
     padding: 10,
     borderRadius: 10,
     marginBottom: 14,
   },
   errorTextModal: {
-    color: '#fda4af',
     fontSize: 12,
   },
   formGroup: {
@@ -513,7 +511,6 @@ const styles = StyleSheet.create({
   formLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#94a3b8',
     marginBottom: 6,
   },
   typesRow: {
@@ -522,33 +519,20 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   typePill: {
-    backgroundColor: '#1e293b',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#334155',
-  },
-  typePillActive: {
-    backgroundColor: 'rgba(16, 185, 129, 0.2)',
-    borderColor: '#10b981',
   },
   typePillText: {
-    color: '#94a3b8',
     fontSize: 12,
     fontWeight: '600',
   },
-  typePillTextActive: {
-    color: '#10b981',
-  },
   input: {
-    backgroundColor: '#020617',
     borderWidth: 1,
-    borderColor: '#334155',
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    color: '#ffffff',
     fontSize: 14,
   },
   modalActions: {
@@ -557,17 +541,14 @@ const styles = StyleSheet.create({
     gap: 12,
     marginTop: 18,
     borderTopWidth: 1,
-    borderTopColor: '#1e293b',
     paddingTop: 16,
   },
   cancelButton: {
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 12,
-    backgroundColor: '#1e293b',
   },
   cancelButtonText: {
-    color: '#94a3b8',
     fontSize: 13,
     fontWeight: '600',
   },
@@ -575,10 +556,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 12,
-    backgroundColor: '#10b981',
   },
   submitButtonText: {
-    color: '#020617',
     fontSize: 13,
     fontWeight: '700',
   },

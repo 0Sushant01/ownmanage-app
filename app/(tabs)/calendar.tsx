@@ -2,28 +2,81 @@ import React, { useEffect, useState, useCallback } from 'react'
 import {
   View,
   Text,
-  TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   RefreshControl,
   Modal,
   Platform,
 } from 'react-native'
 import apiClient from '../../src/api/client'
-import type { CalendarDayRecord } from '../../src/types'
+import type { CalendarDayRecord, CalendarSummary } from '../../src/types'
+import { AppPressable } from '../../src/components/AppPressable'
+import { Screen } from '../../src/components/Screen'
+import { type as typeStyle, getCardShadow } from '../../src/theme'
+import { useAppTheme } from '../../src/context/ThemeContext'
+
+interface StatusConfig {
+  dot: string
+  bg: string
+  badgeBg: string
+  badgeText: string
+  label: string
+  shortLabel: string
+}
+
+const getStatusConfig = (status: string, isDark: boolean): StatusConfig => {
+  const configs: Record<string, StatusConfig> = {
+    PRESENT:     { dot: '#10b981', bg: isDark ? 'rgba(16,185,129,0.1)' : 'rgba(16,185,129,0.12)',  badgeBg: '#10b981', badgeText: '#ffffff', label: 'Present',    shortLabel: 'Present' },
+    ABSENT:      { dot: '#f43f5e', bg: isDark ? 'rgba(244,63,94,0.1)' : 'rgba(244,63,94,0.12)',   badgeBg: '#f43f5e', badgeText: '#ffffff', label: 'Absent',     shortLabel: 'Absent' },
+    HALF_DAY:    { dot: '#f59e0b', bg: isDark ? 'rgba(245,158,11,0.1)' : 'rgba(245,158,11,0.12)',  badgeBg: '#f59e0b', badgeText: '#ffffff', label: 'Half Day',   shortLabel: 'Half Day' },
+    LATE:        { dot: '#f97316', bg: isDark ? 'rgba(249,115,22,0.1)' : 'rgba(249,115,22,0.12)',  badgeBg: '#f97316', badgeText: '#ffffff', label: 'Late',       shortLabel: 'Late' },
+    LEAVE_EARLY: { dot: '#f97316', bg: isDark ? 'rgba(249,115,22,0.1)' : 'rgba(249,115,22,0.12)',  badgeBg: '#f97316', badgeText: '#ffffff', label: 'Left Early', shortLabel: 'Early Off' },
+    LEAVE:       { dot: '#38bdf8', bg: isDark ? 'rgba(56,189,248,0.1)' : 'rgba(56,189,248,0.12)',  badgeBg: '#38bdf8', badgeText: '#ffffff', label: 'Leave',      shortLabel: 'Leave' },
+    HOLIDAY:     { dot: '#a78bfa', bg: isDark ? 'rgba(167,139,250,0.1)' : 'rgba(167,139,250,0.12)', badgeBg: '#a78bfa', badgeText: '#ffffff', label: 'Holiday',    shortLabel: 'Holiday' },
+    WEEK_OFF:    { dot: isDark ? '#94a3b8' : '#64748b', bg: isDark ? 'rgba(148,163,184,0.08)' : 'rgba(100,116,139,0.08)', badgeBg: isDark ? '#475569' : '#64748b', badgeText: '#ffffff', label: 'Weekly Off', shortLabel: 'Week Off' },
+    FUTURE:      { dot: isDark ? '#334155' : '#cbd5e1', bg: 'transparent',            badgeBg: 'transparent', badgeText: isDark ? '#475569' : '#94a3b8', label: 'Upcoming', shortLabel: '' },
+    NO_DATA:     { dot: isDark ? '#475569' : '#cbd5e1', bg: 'transparent',            badgeBg: 'transparent', badgeText: isDark ? '#475569' : '#94a3b8', label: 'No Data',  shortLabel: '' },
+  }
+  return configs[status] || configs.NO_DATA
+}
+
+const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+]
+
+const WEEKDAY_FULL: Record<string, string> = {
+  Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday',
+  Fri: 'Friday', Sat: 'Saturday', Sun: 'Sunday',
+}
+
+function formatFullDate(dateStr: string, weekday: string): string {
+  try {
+    const parts = dateStr.split('-')
+    const y = parseInt(parts[0], 10)
+    const m = parseInt(parts[1], 10)
+    const d = parseInt(parts[2], 10)
+    const fullDay = WEEKDAY_FULL[weekday] || weekday
+    return `${fullDay}, ${d} ${MONTH_NAMES[m - 1]} ${y}`
+  } catch {
+    return dateStr
+  }
+}
 
 export default function CalendarScreen() {
+  const { colors, isDark } = useAppTheme()
   const currentDate = new Date()
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear())
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1)
   const [days, setDays] = useState<CalendarDayRecord[]>([])
+  const [summary, setSummary] = useState<CalendarSummary | null>(null)
+  const [firstWeekday, setFirstWeekday] = useState(0) // 0=Mon
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  // Modal for Tapped Date
   const [selectedDay, setSelectedDay] = useState<CalendarDayRecord | null>(null)
 
   const fetchCalendar = async () => {
@@ -34,6 +87,8 @@ export default function CalendarScreen() {
         params: { year: selectedYear, month: selectedMonth },
       })
       setDays(res.data.days || [])
+      setSummary(res.data.summary || null)
+      setFirstWeekday(res.data.first_weekday ?? 0)
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to load attendance calendar.')
     } finally {
@@ -69,210 +124,397 @@ export default function CalendarScreen() {
     }
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'PRESENT':
-        return { bg: 'rgba(16, 185, 129, 0.15)', text: '#10b981', border: '#10b981' }
-      case 'ABSENT':
-        return { bg: 'rgba(225, 29, 72, 0.15)', text: '#f43f5e', border: '#f43f5e' }
-      case 'HALF_DAY':
-      case 'LATE':
-        return { bg: 'rgba(245, 158, 11, 0.15)', text: '#fbbf24', border: '#fbbf24' }
-      case 'LEAVE':
-        return { bg: 'rgba(56, 189, 248, 0.15)', text: '#38bdf8', border: '#38bdf8' }
-      case 'WEEK_OFF':
-      case 'HOLIDAY':
-      default:
-        return { bg: '#1e293b', text: '#94a3b8', border: '#334155' }
-    }
+  const handleToday = () => {
+    setSelectedYear(currentDate.getFullYear())
+    setSelectedMonth(currentDate.getMonth() + 1)
   }
 
-  const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
-  ]
+  // Today string: YYYY-MM-DD
+  const todayStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`
+
+  // Build grid: empty offset cells
+  const emptyCells = Array.from({ length: firstWeekday }, (_, i) => ({ empty: true, key: `empty-${i}` }))
 
   return (
-    <SafeAreaView style={styles.container}>
+    <Screen>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#10b981" />}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
+        showsVerticalScrollIndicator={false}
       >
-        {/* Month Navigation */}
-        <View style={styles.monthNav}>
-          <TouchableOpacity onPress={handlePrevMonth} style={styles.navButton}>
-            <Text style={styles.navButtonText}>◀</Text>
-          </TouchableOpacity>
-          <Text style={styles.monthTitle}>
-            {monthNames[selectedMonth - 1]} {selectedYear}
+        {/* Top Summary Cards (3x2 Grid) */}
+        {summary && (
+          <View style={styles.summaryContainer}>
+            <View style={styles.summaryRow}>
+              <StatCard
+                count={summary.present}
+                label="Present"
+                color={colors.success}
+                bgColor={isDark ? 'rgba(16,185,129,0.08)' : 'rgba(16,185,129,0.12)'}
+                borderColor={isDark ? 'rgba(16,185,129,0.22)' : 'rgba(16,185,129,0.28)'}
+              />
+              <StatCard
+                count={summary.absent}
+                label="Absent"
+                color={colors.danger}
+                bgColor={isDark ? 'rgba(244,63,94,0.08)' : 'rgba(244,63,94,0.12)'}
+                borderColor={isDark ? 'rgba(244,63,94,0.22)' : 'rgba(244,63,94,0.28)'}
+              />
+              <StatCard
+                count={summary.leave}
+                label="Leave"
+                color={colors.info}
+                bgColor={isDark ? 'rgba(56,189,248,0.08)' : 'rgba(59,130,246,0.12)'}
+                borderColor={isDark ? 'rgba(56,189,248,0.22)' : 'rgba(59,130,246,0.28)'}
+              />
+            </View>
+            <View style={styles.summaryRow}>
+              <StatCard
+                count={summary.holiday}
+                label="Holiday"
+                color="#a78bfa"
+                bgColor={isDark ? 'rgba(167,139,250,0.08)' : 'rgba(167,139,250,0.12)'}
+                borderColor={isDark ? 'rgba(167,139,250,0.22)' : 'rgba(167,139,250,0.28)'}
+              />
+              <StatCard
+                count={summary.week_off}
+                label="Weekly Off"
+                color={colors.textMuted}
+                bgColor={isDark ? 'rgba(148,163,184,0.08)' : 'rgba(100,116,139,0.1)'}
+                borderColor={isDark ? 'rgba(148,163,184,0.20)' : 'rgba(100,116,139,0.2)'}
+              />
+              <StatCard
+                count={summary.late + summary.half_day}
+                label={summary.half_day > 0 && summary.late === 0 ? 'Half Day' : summary.late > 0 && summary.half_day === 0 ? 'Late' : 'Late / Half'}
+                color={colors.warning}
+                bgColor={isDark ? 'rgba(245,158,11,0.08)' : 'rgba(245,158,11,0.12)'}
+                borderColor={isDark ? 'rgba(245,158,11,0.22)' : 'rgba(245,158,11,0.28)'}
+              />
+            </View>
+          </View>
+        )}
+
+        {/* Month Navigation Bar */}
+        <View style={[styles.navBar, { backgroundColor: colors.bgElevated, borderColor: colors.border }, getCardShadow(isDark)]}>
+          <AppPressable onPress={handlePrevMonth} style={[styles.navArrowBtn, { backgroundColor: colors.bgMuted }]} minSize>
+            <Text style={[styles.navArrow, { color: colors.textMuted }]}>‹</Text>
+          </AppPressable>
+          <Text style={[styles.monthTitle, { color: colors.text }]}>
+            {MONTH_NAMES[selectedMonth - 1]} {selectedYear}
           </Text>
-          <TouchableOpacity onPress={handleNextMonth} style={styles.navButton}>
-            <Text style={styles.navButtonText}>▶</Text>
-          </TouchableOpacity>
+          <AppPressable onPress={handleNextMonth} style={[styles.navArrowBtn, { backgroundColor: colors.bgMuted }]} minSize>
+            <Text style={[styles.navArrow, { color: colors.textMuted }]}>›</Text>
+          </AppPressable>
+          <AppPressable onPress={handleToday} style={[styles.todayBtn, { backgroundColor: isDark ? 'rgba(16,185,129,0.12)' : 'rgba(5,150,105,0.1)', borderColor: colors.accent }]} minSize>
+            <Text style={[styles.todayBtnText, { color: colors.accent }]}>Today</Text>
+          </AppPressable>
         </View>
 
         {loading ? (
           <View style={styles.loadingBox}>
-            <ActivityIndicator size="large" color="#10b981" />
-            <Text style={styles.loadingText}>Loading calendar data...</Text>
+            <ActivityIndicator size="large" color={colors.accent} />
+            <Text style={[styles.loadingText, { color: colors.textMuted }]}>Loading calendar...</Text>
           </View>
         ) : error ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        ) : days.length === 0 ? (
-          <View style={styles.emptyBox}>
-            <Text style={styles.emptyIcon}>📅</Text>
-            <Text style={styles.emptyTitle}>No Records Found</Text>
-            <Text style={styles.emptySubtitle}>No attendance logs for this month yet.</Text>
+          <View style={[styles.errorBox, { backgroundColor: isDark ? 'rgba(225,29,72,0.12)' : '#fee2e2', borderColor: colors.danger }]}>
+            <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>
           </View>
         ) : (
-          <View style={styles.daysList}>
-            {days.map((day) => {
-              const colors = getStatusColor(day.status)
-              return (
-                <TouchableOpacity
-                  key={day.date}
-                  style={styles.dayCard}
-                  onPress={() => setSelectedDay(day)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.dayLeft}>
-                    <Text style={styles.dayDateText}>{day.date}</Text>
-                    <View style={styles.hoursRow}>
-                      <Text style={styles.hoursLabel}>Working:</Text>
-                      <Text style={styles.hoursText}>{day.work_hours}</Text>
-                    </View>
+          <>
+            {/* Calendar Card */}
+            <View style={[styles.calendarCard, { backgroundColor: colors.bgElevated, borderColor: colors.border }, getCardShadow(isDark)]}>
+              {/* Weekday Row */}
+              <View style={[styles.weekdayRow, { borderBottomColor: colors.border }]}>
+                {WEEKDAY_LABELS.map((w, idx) => (
+                  <View key={w} style={styles.weekdayCell}>
+                    <Text style={[styles.weekdayText, { color: (idx === 5 || idx === 6) ? colors.textFaint : colors.textMuted }]}>
+                      {w}
+                    </Text>
                   </View>
+                ))}
+              </View>
 
-                  <View style={styles.dayRight}>
-                    <View
+              {/* Grid of Days */}
+              <View style={styles.daysGrid}>
+                {emptyCells.map((c) => (
+                  <View key={c.key} style={styles.emptyCell} />
+                ))}
+                {days.map((day) => {
+                  const config = getStatusConfig(day.status, isDark)
+                  const isToday = day.date === todayStr
+                  const isFuture = day.status === 'FUTURE'
+                  const isNoData = day.status === 'NO_DATA'
+                  const hasBadge = !isFuture && !isNoData && config.shortLabel !== ''
+
+                  let badgeText = config.shortLabel
+                  if (day.holiday_name) {
+                    badgeText = day.holiday_name.length > 7 ? day.holiday_name.slice(0, 6) + '..' : day.holiday_name
+                  } else if (day.leave_type) {
+                    badgeText = day.leave_type.length > 7 ? day.leave_type.slice(0, 6) + '..' : day.leave_type
+                  }
+
+                  return (
+                    <AppPressable
+                      key={day.date}
                       style={[
-                        styles.statusBadge,
-                        { backgroundColor: colors.bg, borderColor: colors.border },
+                        styles.dayCell,
+                        hasBadge && { backgroundColor: config.bg },
+                        isToday && [styles.todayCell, { borderColor: colors.warning, backgroundColor: isDark ? 'rgba(245,158,11,0.1)' : 'rgba(245,158,11,0.15)' }],
                       ]}
+                      onPress={() => !isFuture && setSelectedDay(day)}
+                      disabled={isFuture}
                     >
-                      <Text style={[styles.statusBadgeText, { color: colors.text }]}>
-                        {day.status}
+                      <Text
+                        style={[
+                          styles.dayNumber,
+                          { color: isToday ? colors.warning : isFuture ? colors.textFaint : colors.text },
+                        ]}
+                      >
+                        {day.day}
                       </Text>
-                    </View>
-                    <Text style={styles.tapPrompt}>Tap for details →</Text>
-                  </View>
-                </TouchableOpacity>
-              )
-            })}
-          </View>
+                      {hasBadge ? (
+                        <View style={[styles.statusBadge, { backgroundColor: config.badgeBg }]}>
+                          <Text style={styles.statusBadgeText} numberOfLines={1}>
+                            {badgeText}
+                          </Text>
+                        </View>
+                      ) : (
+                        <View style={styles.emptyBadgeSpace} />
+                      )}
+                    </AppPressable>
+                  )
+                })}
+              </View>
+            </View>
+
+            {/* Legend */}
+            <View style={[styles.legendCard, { backgroundColor: colors.bgElevated, borderColor: colors.border }]}>
+              <LegendItem color={colors.success} label="Present" textColor={colors.textMuted} />
+              <LegendItem color={colors.danger} label="Absent" textColor={colors.textMuted} />
+              <LegendItem color={colors.info} label="Leave" textColor={colors.textMuted} />
+              <LegendItem color="#a78bfa" label="Holiday" textColor={colors.textMuted} />
+              <LegendItem color={colors.textMuted} label="Weekly Off" textColor={colors.textMuted} />
+              <LegendItem color="#f97316" label="Late" textColor={colors.textMuted} />
+              <LegendItem color={colors.warning} label="Half Day" textColor={colors.textMuted} />
+            </View>
+          </>
         )}
       </ScrollView>
 
-      {/* Date Detail Modal */}
+      {/* Day Detail Bottom Sheet / Modal */}
       {selectedDay && (
         <Modal
           visible={true}
           transparent={true}
-          animationType="fade"
+          animationType="slide"
           onRequestClose={() => setSelectedDay(null)}
         >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalCard}>
+          <AppPressable
+            style={styles.modalOverlay}
+            onPress={() => setSelectedDay(null)}
+          >
+            <AppPressable
+              style={[styles.modalSheet, { backgroundColor: colors.bgElevated, borderColor: colors.border }]}
+              onPress={(e) => e.stopPropagation()}
+            >
+              {/* Handle bar */}
+              <View style={[styles.modalHandle, { backgroundColor: colors.borderStrong }]} />
+
+              {/* Header */}
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Attendance Details</Text>
-                <TouchableOpacity onPress={() => setSelectedDay(null)}>
-                  <Text style={styles.closeIcon}>✕</Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.modalDetails}>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Date</Text>
-                  <Text style={styles.detailValue}>{selectedDay.date}</Text>
-                </View>
-
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Status</Text>
-                  <View
-                    style={[
-                      styles.statusBadge,
-                      {
-                        backgroundColor: getStatusColor(selectedDay.status).bg,
-                        borderColor: getStatusColor(selectedDay.status).border,
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.statusBadgeText,
-                        { color: getStatusColor(selectedDay.status).text },
-                      ]}
-                    >
-                      {selectedDay.status}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Check-In Time</Text>
-                  <Text style={styles.detailValue}>{selectedDay.check_in || 'None'}</Text>
-                </View>
-
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Check-Out Time</Text>
-                  <Text style={styles.detailValue}>{selectedDay.check_out || 'None'}</Text>
-                </View>
-
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Working Hours</Text>
-                  <Text style={[styles.detailValue, { color: '#10b981', fontWeight: '800' }]}>
-                    {selectedDay.work_hours}
+                <Text style={[styles.modalDateTitle, { color: colors.text }]}>
+                  {formatFullDate(selectedDay.date, selectedDay.weekday)}
+                </Text>
+                <View
+                  style={[
+                    styles.modalStatusBadge,
+                    { backgroundColor: getStatusConfig(selectedDay.status, isDark).badgeBg },
+                  ]}
+                >
+                  <Text style={styles.modalStatusBadgeText}>
+                    {getStatusConfig(selectedDay.status, isDark).label}
                   </Text>
                 </View>
               </View>
 
-              <TouchableOpacity
-                style={styles.modalCloseButton}
+              <View style={[styles.modalDivider, { backgroundColor: colors.border }]} />
+
+              {/* Info Rows */}
+              <View style={styles.modalBody}>
+                {selectedDay.holiday_name ? (
+                  <ModalRow icon="🎉" label="Holiday:" value={selectedDay.holiday_name} valueColor="#a78bfa" bgColor={colors.bgMuted} labelColor={colors.textMuted} textColor={colors.text} />
+                ) : null}
+                {selectedDay.leave_type ? (
+                  <ModalRow icon="🏖️" label="Leave Type:" value={selectedDay.leave_type} valueColor={colors.info} bgColor={colors.bgMuted} labelColor={colors.textMuted} textColor={colors.text} />
+                ) : null}
+                <ModalRow icon="➔" label="Check In:" value={selectedDay.check_in || '—'} bgColor={colors.bgMuted} labelColor={colors.textMuted} textColor={colors.text} />
+                <ModalRow icon="➔" label="Check Out:" value={selectedDay.check_out || '—'} bgColor={colors.bgMuted} labelColor={colors.textMuted} textColor={colors.text} />
+                <ModalRow
+                  icon="⏱️"
+                  label="Working Hours:"
+                  value={selectedDay.work_hours || '00h 00m'}
+                  valueColor={colors.success}
+                  bgColor={colors.bgMuted}
+                  labelColor={colors.textMuted}
+                  textColor={colors.text}
+                />
+                <ModalRow icon="⏰" label="Overtime:" value="—" bgColor={colors.bgMuted} labelColor={colors.textMuted} textColor={colors.text} />
+              </View>
+
+              {/* Close button */}
+              <AppPressable
+                style={[styles.modalCloseBtn, { backgroundColor: colors.accent }]}
                 onPress={() => setSelectedDay(null)}
               >
-                <Text style={styles.modalCloseButtonText}>Close</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+                <Text style={[styles.modalCloseText, { color: isDark ? colors.accentDark : '#ffffff' }]}>Done</Text>
+              </AppPressable>
+            </AppPressable>
+          </AppPressable>
         </Modal>
       )}
-    </SafeAreaView>
+    </Screen>
   )
 }
 
+// --- Sub-components ---
+
+function StatCard({
+  count,
+  label,
+  color,
+  bgColor,
+  borderColor,
+}: {
+  count: number
+  label: string
+  color: string
+  bgColor: string
+  borderColor: string
+}) {
+  return (
+    <View style={[styles.statCard, { backgroundColor: bgColor, borderColor }]}>
+      <Text style={[styles.statCount, { color }]}>{count}</Text>
+      <Text style={[styles.statLabel, { color }]}>{label}</Text>
+    </View>
+  )
+}
+
+function LegendItem({ color, label, textColor }: { color: string; label: string; textColor: string }) {
+  return (
+    <View style={styles.legendItem}>
+      <View style={[styles.legendDot, { backgroundColor: color }]} />
+      <Text style={[styles.legendLabel, { color: textColor }]}>{label}</Text>
+    </View>
+  )
+}
+
+function ModalRow({
+  icon,
+  label,
+  value,
+  valueColor,
+  bgColor,
+  labelColor,
+  textColor,
+}: {
+  icon: string
+  label: string
+  value: string
+  valueColor?: string
+  bgColor: string
+  labelColor: string
+  textColor: string
+}) {
+  return (
+    <View style={[styles.modalRow, { backgroundColor: bgColor }]}>
+      <View style={styles.modalRowLeft}>
+        <Text style={[styles.modalRowIcon, { color: labelColor }]}>{icon}</Text>
+        <Text style={[styles.modalRowLabel, { color: labelColor }]}>{label}</Text>
+      </View>
+      <Text style={[styles.modalRowValue, { color: valueColor || textColor }]}>
+        {value}
+      </Text>
+    </View>
+  )
+}
+
+// --- Styles ---
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#020617',
-  },
   scrollContent: {
-    padding: 20,
+    width: '100%',
+    maxWidth: 480,
+    alignSelf: 'center',
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 40,
   },
-  monthNav: {
+  summaryContainer: {
+    marginBottom: 12,
+    gap: 8,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  statCard: {
+    flex: 1,
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  statCount: {
+    fontSize: 18,
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  statLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 2,
+    letterSpacing: 0.2,
+  },
+  navBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#0f172a',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#1e293b',
-    marginBottom: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 12,
   },
-  navButton: {
-    padding: 8,
+  navArrowBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  navButtonText: {
-    color: '#10b981',
-    fontSize: 16,
-    fontWeight: '700',
+  navArrow: {
+    fontSize: 20,
+    fontWeight: '400',
+    marginTop: -2,
   },
   monthTitle: {
-    color: '#ffffff',
-    fontSize: 16,
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '700',
+    textAlign: 'center',
+    letterSpacing: 0.3,
+  },
+  todayBtn: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginLeft: 6,
+  },
+  todayBtnText: {
+    fontSize: 11,
     fontWeight: '700',
   },
   loadingBox: {
@@ -280,160 +522,195 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    color: '#94a3b8',
     fontSize: 13,
-    marginTop: 12,
+    marginTop: 10,
   },
   errorBox: {
-    backgroundColor: 'rgba(225, 29, 72, 0.15)',
-    borderColor: '#e11d48',
     borderWidth: 1,
-    padding: 16,
+    padding: 14,
     borderRadius: 12,
+    marginBottom: 12,
   },
   errorText: {
-    color: '#fda4af',
     fontSize: 13,
     textAlign: 'center',
   },
-  emptyBox: {
-    paddingVertical: 60,
-    alignItems: 'center',
-  },
-  emptyIcon: {
-    fontSize: 36,
-    marginBottom: 10,
-  },
-  emptyTitle: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  emptySubtitle: {
-    color: '#64748b',
-    fontSize: 13,
-    marginTop: 4,
-  },
-  daysList: {
-    gap: 12,
-  },
-  dayCard: {
-    backgroundColor: '#0f172a',
+  calendarCard: {
     borderRadius: 16,
-    padding: 16,
     borderWidth: 1,
-    borderColor: '#1e293b',
+    padding: 8,
+    marginBottom: 12,
+  },
+  weekdayRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    paddingBottom: 6,
+    borderBottomWidth: 1,
+    marginBottom: 6,
+  },
+  weekdayCell: {
+    width: `${100 / 7}%`,
     alignItems: 'center',
+    paddingVertical: 4,
   },
-  dayLeft: {
-    flex: 1,
+  weekdayText: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
   },
-  dayDateText: {
-    color: '#ffffff',
-    fontSize: 15,
-    fontWeight: '700',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-  },
-  hoursRow: {
+  daysGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  emptyCell: {
+    width: `${100 / 7}%`,
+    height: 52,
+  },
+  dayCell: {
+    width: `${100 / 7}%`,
+    height: 52,
     alignItems: 'center',
-    marginTop: 4,
-    gap: 4,
+    justifyContent: 'center',
+    paddingVertical: 3,
+    paddingHorizontal: 1,
+    borderRadius: 8,
+    marginVertical: 1,
   },
-  hoursLabel: {
-    color: '#64748b',
-    fontSize: 12,
+  todayCell: {
+    borderWidth: 1.5,
   },
-  hoursText: {
-    color: '#94a3b8',
+  dayNumber: {
     fontSize: 12,
     fontWeight: '600',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
-  dayRight: {
-    alignItems: 'flex-end',
-  },
   statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-    borderWidth: 1,
+    paddingHorizontal: 3,
+    paddingVertical: 1,
+    borderRadius: 4,
+    marginTop: 2,
+    maxWidth: '92%',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   statusBadgeText: {
-    fontSize: 11,
+    color: '#ffffff',
+    fontSize: 8,
     fontWeight: '700',
-    textTransform: 'uppercase',
+    textAlign: 'center',
   },
-  tapPrompt: {
-    color: '#64748b',
+  emptyBadgeSpace: {
+    height: 12,
+    marginTop: 2,
+  },
+  legendCard: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    gap: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  legendDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  legendLabel: {
     fontSize: 10,
-    marginTop: 6,
+    fontWeight: '500',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(2, 6, 23, 0.85)',
-    justifyContent: 'center',
+    backgroundColor: 'rgba(2,6,23,0.7)',
+    justifyContent: 'flex-end',
     alignItems: 'center',
-    padding: 24,
   },
-  modalCard: {
-    backgroundColor: '#0f172a',
-    borderRadius: 24,
-    padding: 24,
+  modalSheet: {
     width: '100%',
-    maxWidth: 380,
+    maxWidth: 480,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     borderWidth: 1,
-    borderColor: '#1e293b',
+    borderBottomWidth: 0,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+  },
+  modalHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 12,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#1e293b',
-    paddingBottom: 14,
-    marginBottom: 16,
   },
-  modalTitle: {
-    fontSize: 17,
-    fontWeight: '800',
+  modalDateTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  modalStatusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  modalStatusBadgeText: {
     color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
   },
-  closeIcon: {
-    fontSize: 18,
-    color: '#94a3b8',
-    padding: 4,
+  modalDivider: {
+    height: 1,
+    marginVertical: 12,
   },
-  modalDetails: {
-    gap: 14,
+  modalBody: {
+    gap: 8,
   },
-  detailRow: {
+  modalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
-  detailLabel: {
-    color: '#94a3b8',
+  modalRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  modalRowIcon: {
     fontSize: 13,
   },
-  detailValue: {
-    color: '#ffffff',
-    fontSize: 14,
+  modalRowLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  modalRowValue: {
+    fontSize: 13,
     fontWeight: '600',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
-  modalCloseButton: {
-    backgroundColor: '#1e293b',
-    borderRadius: 12,
+  modalCloseBtn: {
+    borderRadius: 10,
     paddingVertical: 12,
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: 14,
   },
-  modalCloseButtonText: {
-    color: '#ffffff',
+  modalCloseText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 })

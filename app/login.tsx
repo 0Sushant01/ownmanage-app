@@ -3,20 +3,23 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
 } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useAuth } from '../src/context/AuthContext'
+import { AppPressable } from '../src/components/AppPressable'
+import { Screen } from '../src/components/Screen'
+import { fonts, getCardShadow } from '../src/theme'
+import { useAppTheme } from '../src/context/ThemeContext'
 
 export default function LoginScreen() {
   const router = useRouter()
   const { user, login, loading: authLoading } = useAuth()
+  const { colors, isDark } = useAppTheme()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -62,47 +65,47 @@ export default function LoginScreen() {
 
   if (authLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#10b981" />
-        <Text style={styles.loadingText}>Initializing OwnManage...</Text>
-      </View>
+      <Screen>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.accent} />
+          <Text style={[styles.loadingText, { color: colors.textMuted }]}>Initializing OwnManage...</Text>
+        </View>
+      </Screen>
     )
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <Screen>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          {/* Logo & Header */}
           <View style={styles.header}>
-            <View style={styles.logoBadge}>
-              <Text style={styles.logoText}>OM</Text>
+            <View style={[styles.logoBadge, { backgroundColor: colors.accent }]}>
+              <Text style={[styles.logoText, { color: isDark ? colors.accentDark : '#ffffff' }]}>OM</Text>
             </View>
-            <Text style={styles.brandTitle}>OwnManage</Text>
-            <Text style={styles.brandSubtitle}>
+            <Text style={[styles.brandTitle, { color: colors.text }]}>OwnManage</Text>
+            <Text style={[styles.brandSubtitle, { color: colors.textMuted }]}>
               Multi-Tenant Attendance & Workforce Management
             </Text>
           </View>
 
-          {/* Form Card */}
-          <View style={styles.formCard}>
-            <Text style={styles.formTitle}>Sign In</Text>
+          <View style={[styles.formCard, { backgroundColor: colors.bgElevated, borderColor: colors.border }, getCardShadow(isDark)]}>
+            <Text style={[styles.formTitle, { color: colors.text }]}>Sign In</Text>
 
             {errorMessage && (
-              <View style={styles.errorBox}>
-                <Text style={styles.errorText}>{errorMessage}</Text>
+              <View style={[styles.errorBox, { backgroundColor: isDark ? 'rgba(225, 29, 72, 0.15)' : '#fee2e2', borderColor: colors.danger }]}>
+                <Text style={[styles.errorText, { color: colors.danger }]}>{errorMessage}</Text>
               </View>
             )}
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Work Email</Text>
+              <Text style={[styles.label, { color: colors.textMuted }]}>Work Email</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.bg, borderColor: colors.border, color: colors.text }]}
                 placeholder="name@company.com"
-                placeholderTextColor="#64748b"
+                placeholderTextColor={colors.textFaint}
                 autoCapitalize="none"
                 keyboardType="email-address"
                 value={email}
@@ -111,74 +114,68 @@ export default function LoginScreen() {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Password</Text>
+              <Text style={[styles.label, { color: colors.textMuted }]}>Password</Text>
               <View style={styles.passwordContainer}>
                 <TextInput
-                  style={[styles.input, { flex: 1, paddingRight: 45 }]}
+                  style={[styles.input, { flex: 1, paddingRight: 52, backgroundColor: colors.bg, borderColor: colors.border, color: colors.text }]}
                   placeholder="••••••••"
-                  placeholderTextColor="#64748b"
+                  placeholderTextColor={colors.textFaint}
                   secureTextEntry={!showPassword}
                   value={password}
                   onChangeText={setPassword}
                 />
-                <TouchableOpacity
+                <AppPressable
                   style={styles.eyeButton}
                   onPress={() => setShowPassword(!showPassword)}
-                  activeOpacity={0.7}
                 >
-                  <Text style={styles.eyeButtonText}>{showPassword ? 'HIDE' : 'SHOW'}</Text>
-                </TouchableOpacity>
+                  <Text style={[styles.eyeButtonText, { color: colors.accent }]}>{showPassword ? 'HIDE' : 'SHOW'}</Text>
+                </AppPressable>
               </View>
             </View>
 
-            <TouchableOpacity
-              style={[styles.primaryButton, submitting && styles.buttonDisabled]}
+            <AppPressable
+              style={[styles.primaryButton, { backgroundColor: colors.accent }, submitting && styles.buttonDisabled]}
               onPress={handleLogin}
               disabled={submitting}
             >
               {submitting ? (
-                <ActivityIndicator color="#020617" />
+                <ActivityIndicator color={isDark ? colors.accentDark : '#ffffff'} />
               ) : (
-                <Text style={styles.primaryButtonText}>Sign In to App</Text>
+                <Text style={[styles.primaryButtonText, { color: isDark ? colors.accentDark : '#ffffff' }]}>Sign In to App</Text>
               )}
-            </TouchableOpacity>
+            </AppPressable>
           </View>
 
-          {/* Quick-fill Dev Accounts */}
           <View style={styles.devSection}>
-            <Text style={styles.devSectionTitle}>DEV QUICK LOGIN</Text>
+            <Text style={[styles.devSectionTitle, { color: colors.textFaint }]}>DEV QUICK LOGIN</Text>
             <View style={styles.quickButtonsRow}>
-              <TouchableOpacity
-                style={styles.quickButton}
+              <AppPressable
+                style={[styles.quickButton, { backgroundColor: colors.bgMuted, borderColor: colors.border }]}
                 onPress={() => fillQuickCredentials('staff1@acme.com')}
               >
-                <Text style={styles.quickButtonText}>Staff 1</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.quickButton}
+                <Text style={[styles.quickButtonText, { color: colors.textMuted }]}>Staff 1</Text>
+              </AppPressable>
+              <AppPressable
+                style={[styles.quickButton, { backgroundColor: colors.bgMuted, borderColor: colors.border }]}
                 onPress={() => fillQuickCredentials('manager1@acme.com')}
               >
-                <Text style={styles.quickButtonText}>Manager</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.quickButton}
+                <Text style={[styles.quickButtonText, { color: colors.textMuted }]}>Manager</Text>
+              </AppPressable>
+              <AppPressable
+                style={[styles.quickButton, { backgroundColor: colors.bgMuted, borderColor: colors.border }]}
                 onPress={() => fillQuickCredentials('admin@acme.com')}
               >
-                <Text style={styles.quickButtonText}>Admin</Text>
-              </TouchableOpacity>
+                <Text style={[styles.quickButtonText, { color: colors.textMuted }]}>Admin</Text>
+              </AppPressable>
             </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </Screen>
   )
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#020617',
-  },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
@@ -186,14 +183,13 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#020617',
     alignItems: 'center',
     justifyContent: 'center',
   },
   loadingText: {
-    color: '#94a3b8',
     marginTop: 12,
     fontSize: 14,
+    fontFamily: fonts.sans,
   },
   header: {
     alignItems: 'center',
@@ -203,72 +199,48 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 16,
-    backgroundColor: '#10b981',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
-    ...Platform.select({
-      web: { boxShadow: '0 6px 10px rgba(16, 185, 129, 0.35)' },
-      default: {
-        shadowColor: '#10b981',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.35,
-        shadowRadius: 10,
-        elevation: 8,
-      },
-    }),
   },
   logoText: {
-    color: '#020617',
     fontSize: 26,
-    fontWeight: '900',
+    fontWeight: '800',
+    fontFamily: fonts.sans,
   },
   brandTitle: {
     fontSize: 26,
     fontWeight: '800',
-    color: '#ffffff',
     letterSpacing: -0.5,
+    fontFamily: fonts.sans,
   },
   brandSubtitle: {
-    fontSize: 12,
-    color: '#94a3b8',
-    marginTop: 4,
+    fontSize: 13,
+    marginTop: 6,
     textAlign: 'center',
+    lineHeight: 18,
+    fontFamily: fonts.sans,
   },
   formCard: {
-    backgroundColor: '#0f172a',
     borderRadius: 20,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#1e293b',
-    ...Platform.select({
-      web: { boxShadow: '0 10px 16px rgba(0, 0, 0, 0.5)' },
-      default: {
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.5,
-        shadowRadius: 16,
-        elevation: 10,
-      },
-    }),
   },
   formTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#ffffff',
     marginBottom: 16,
+    fontFamily: fonts.sans,
   },
   errorBox: {
-    backgroundColor: 'rgba(225, 29, 72, 0.15)',
     borderWidth: 1,
-    borderColor: '#e11d48',
     padding: 12,
     borderRadius: 12,
     marginBottom: 16,
   },
   errorText: {
-    color: '#fda4af',
     fontSize: 13,
+    fontFamily: fonts.sans,
   },
   inputGroup: {
     marginBottom: 16,
@@ -276,20 +248,19 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#94a3b8',
     marginBottom: 6,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+    fontFamily: fonts.sans,
   },
   input: {
-    backgroundColor: '#020617',
     borderWidth: 1,
-    borderColor: '#334155',
     borderRadius: 12,
     paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: '#ffffff',
-    fontSize: 15,
+    paddingVertical: 14,
+    minHeight: 48,
+    fontSize: 16,
+    fontFamily: fonts.sans,
   },
   passwordContainer: {
     position: 'relative',
@@ -298,41 +269,35 @@ const styles = StyleSheet.create({
   },
   eyeButton: {
     position: 'absolute',
-    right: 12,
-    padding: 6,
+    right: 4,
+    minHeight: 44,
+    minWidth: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
     zIndex: 10,
   },
   eyeButtonText: {
-    color: '#10b981',
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.5,
+    fontFamily: fonts.sans,
   },
   primaryButton: {
-    backgroundColor: '#10b981',
     borderRadius: 12,
+    minHeight: 52,
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 8,
-    ...Platform.select({
-      web: { boxShadow: '0 4px 8px rgba(16, 185, 129, 0.3)' },
-      default: {
-        shadowColor: '#10b981',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 4,
-      },
-    }),
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   primaryButtonText: {
-    color: '#020617',
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
+    fontFamily: fonts.sans,
+    textAlign: 'center',
   },
   devSection: {
     marginTop: 32,
@@ -341,25 +306,25 @@ const styles = StyleSheet.create({
   devSectionTitle: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#64748b',
     letterSpacing: 1,
     marginBottom: 10,
+    fontFamily: fonts.sans,
   },
   quickButtonsRow: {
     flexDirection: 'row',
     gap: 8,
   },
   quickButton: {
-    backgroundColor: '#1e293b',
     borderWidth: 1,
-    borderColor: '#334155',
     paddingHorizontal: 16,
+    minHeight: 44,
+    justifyContent: 'center',
     paddingVertical: 8,
     borderRadius: 10,
   },
   quickButtonText: {
-    color: '#cbd5e1',
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: fonts.sans,
   },
 })

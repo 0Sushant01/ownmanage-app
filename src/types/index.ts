@@ -19,9 +19,19 @@ export interface EmployeeSummary {
   employee_id?: string
   first_name?: string
   last_name?: string
+  full_name?: string
+  email?: string
+  phone?: string
   designation?: string
+  employment_status?: string
+  joining_date?: string
   department?: string
+  department_name?: string
+  department_id?: string
   branch?: string
+  branch_name?: string
+  branch_id?: string
+  manager_name?: string
 }
 
 export interface TodayAttendanceState {
@@ -44,11 +54,26 @@ export interface TodayAttendanceState {
 
 export interface CalendarDayRecord {
   date: string
+  day: number
+  weekday: string
   status: string
   total_work_seconds: number
   work_hours: string
   check_in?: string | null
   check_out?: string | null
+  holiday_name?: string | null
+  leave_type?: string | null
+}
+
+export interface CalendarSummary {
+  present: number
+  absent: number
+  leave: number
+  holiday: number
+  week_off: number
+  half_day: number
+  late: number
+  total_days: number
 }
 
 export interface LeaveType {

@@ -2,10 +2,8 @@ import React, { useEffect, useState, useCallback } from 'react'
 import {
   View,
   Text,
-  TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   RefreshControl,
   Platform,
@@ -13,9 +11,14 @@ import {
 import apiClient from '../../src/api/client'
 import { useAuth } from '../../src/context/AuthContext'
 import type { TodayAttendanceState } from '../../src/types'
+import { AppPressable } from '../../src/components/AppPressable'
+import { Screen } from '../../src/components/Screen'
+import { type as typeStyle, getCardShadow } from '../../src/theme'
+import { useAppTheme } from '../../src/context/ThemeContext'
 
 export default function HomeScreen() {
   const { user, employee, business } = useAuth()
+  const { colors, isDark } = useAppTheme()
   const [todayState, setTodayState] = useState<TodayAttendanceState | null>(null)
   const [loading, setLoading] = useState(true)
   const [punching, setPunching] = useState(false)
@@ -97,45 +100,46 @@ export default function HomeScreen() {
   })
 
   return (
-    <SafeAreaView style={styles.container}>
+    <Screen>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#10b981" />}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
       >
         {/* Header Greeting */}
         <View style={styles.header}>
-          <Text style={styles.greetingText}>{getGreeting()}</Text>
-          <Text style={styles.dateText}>{currentDateDisplay}</Text>
+          <Text style={[styles.greetingText, { color: colors.text }]}>{getGreeting()}</Text>
+          <Text style={[styles.dateText, { color: colors.textMuted }]}>{currentDateDisplay}</Text>
           <View style={styles.badgeRow}>
-            <View style={styles.businessBadge}>
-              <Text style={styles.businessBadgeText}>{business?.name || 'OwnManage'}</Text>
+            <View style={[styles.businessBadge, { backgroundColor: colors.bgMuted, borderColor: colors.border }]}>
+              <Text style={[styles.businessBadgeText, { color: colors.textMuted }]}>{business?.name || 'OwnManage'}</Text>
             </View>
             {employee?.employee_id && (
-              <View style={styles.empIdBadge}>
-                <Text style={styles.empIdBadgeText}>{employee.employee_id}</Text>
+              <View style={[styles.empIdBadge, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(5, 150, 105, 0.1)', borderColor: colors.accent }]}>
+                <Text style={[styles.empIdBadgeText, { color: colors.accent }]}>{employee.employee_id}</Text>
               </View>
             )}
           </View>
         </View>
 
         {statusMessage && (
-          <View style={styles.messageBox}>
-            <Text style={styles.messageText}>{statusMessage}</Text>
+          <View style={[styles.messageBox, { backgroundColor: colors.bgMuted, borderColor: colors.border }]}>
+            <Text style={[styles.messageText, { color: colors.info }]}>{statusMessage}</Text>
           </View>
         )}
 
         {/* Attendance Card */}
-        <View style={styles.attendanceCard}>
-          <Text style={styles.cardHeaderTitle}>Today's attendance</Text>
+        <View style={[styles.attendanceCard, { backgroundColor: colors.bgElevated, borderColor: colors.border }, getCardShadow(isDark)]}>
+          <Text style={[styles.cardHeaderTitle, { color: colors.textMuted }]}>Today's attendance</Text>
 
           {loading ? (
             <View style={styles.innerLoading}>
-              <ActivityIndicator size="large" color="#10b981" />
-              <Text style={styles.innerLoadingText}>Syncing attendance...</Text>
+              <ActivityIndicator size="large" color={colors.accent} />
+              <Text style={[styles.innerLoadingText, { color: colors.textMuted }]}>Syncing attendance...</Text>
             </View>
           ) : !todayState ? (
             <View style={styles.notLinkedBox}>
-              <Text style={styles.notLinkedText}>
+              <Text style={[styles.notLinkedText, { color: colors.textMuted }]}>
                 No linked employee attendance profile found.
               </Text>
             </View>
@@ -144,29 +148,29 @@ export default function HomeScreen() {
               {/* STATE 1: Checked In and Active */}
               {todayState.is_checked_in && (
                 <View style={styles.activeStateContainer}>
-                  <Text style={styles.primaryTime}>
+                  <Text style={[styles.primaryTime, { color: colors.text }]}>
                     {todayState.first_check_in_time || '--:--'}
                   </Text>
-                  <View style={styles.checkedInBadge}>
-                    <Text style={styles.checkedInBadgeText}>CHECKED IN</Text>
+                  <View style={[styles.checkedInBadge, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.12)', borderColor: colors.accent }]}>
+                    <Text style={[styles.checkedInBadgeText, { color: colors.accent }]}>CHECKED IN</Text>
                   </View>
 
                   <View style={styles.timerContainer}>
-                    <Text style={styles.timerLabel}>Working:</Text>
-                    <Text style={styles.timerValue}>{formatLiveDuration(liveSeconds)}</Text>
+                    <Text style={[styles.timerLabel, { color: colors.textMuted }]}>Working:</Text>
+                    <Text style={[styles.timerValue, { color: colors.info }]}>{formatLiveDuration(liveSeconds)}</Text>
                   </View>
 
-                  <TouchableOpacity
-                    style={[styles.checkOutButton, punching && styles.buttonDisabled]}
+                  <AppPressable
+                    style={[styles.checkOutButton, { backgroundColor: colors.danger }, punching && styles.buttonDisabled]}
                     onPress={() => handlePunch('check_out')}
                     disabled={punching}
                   >
                     {punching ? (
                       <ActivityIndicator color="#ffffff" />
                     ) : (
-                      <Text style={styles.checkOutButtonText}>[ CHECK OUT ]</Text>
+                      <Text style={styles.checkOutButtonText}>Check out</Text>
                     )}
-                  </TouchableOpacity>
+                  </AppPressable>
                 </View>
               )}
 
@@ -174,59 +178,59 @@ export default function HomeScreen() {
               {!todayState.is_checked_in && todayState.last_check_out_time && (
                 <View style={styles.completedStateContainer}>
                   <View style={styles.completedRow}>
-                    <Text style={styles.completedLabel}>Check-in:</Text>
-                    <Text style={styles.completedValue}>{todayState.first_check_in_time || '--:--'}</Text>
+                    <Text style={[styles.completedLabel, { color: colors.textMuted }]}>Check-in:</Text>
+                    <Text style={[styles.completedValue, { color: colors.text }]}>{todayState.first_check_in_time || '--:--'}</Text>
                   </View>
                   <View style={styles.completedRow}>
-                    <Text style={styles.completedLabel}>Check-out:</Text>
-                    <Text style={styles.completedValue}>{todayState.last_check_out_time}</Text>
+                    <Text style={[styles.completedLabel, { color: colors.textMuted }]}>Check-out:</Text>
+                    <Text style={[styles.completedValue, { color: colors.text }]}>{todayState.last_check_out_time}</Text>
                   </View>
 
-                  <View style={styles.completedBadge}>
-                    <Text style={styles.completedBadgeText}>Completed</Text>
+                  <View style={[styles.completedBadge, { backgroundColor: isDark ? 'rgba(56, 189, 248, 0.15)' : 'rgba(59, 130, 246, 0.1)', borderColor: colors.info }]}>
+                    <Text style={[styles.completedBadgeText, { color: colors.info }]}>Completed</Text>
                   </View>
 
                   <View style={styles.totalHoursRow}>
-                    <Text style={styles.timerLabel}>Total Logged:</Text>
-                    <Text style={styles.totalHoursValue}>
+                    <Text style={[styles.timerLabel, { color: colors.textMuted }]}>Total Logged:</Text>
+                    <Text style={[styles.totalHoursValue, { color: colors.accent }]}>
                       {Math.floor(todayState.total_work_seconds / 3600)}h{' '}
                       {Math.floor((todayState.total_work_seconds % 3600) / 60)}m
                     </Text>
                   </View>
 
                   {/* Allow punch-in again if multiple check-ins are permitted in the workday */}
-                  <TouchableOpacity
-                    style={[styles.checkInButton, punching && styles.buttonDisabled, { marginTop: 20 }]}
+                  <AppPressable
+                    style={[styles.checkInButton, { backgroundColor: colors.accent, marginTop: 20 }, punching && styles.buttonDisabled]}
                     onPress={() => handlePunch('check_in')}
                     disabled={punching}
                   >
                     {punching ? (
-                      <ActivityIndicator color="#020617" />
+                      <ActivityIndicator color={isDark ? colors.accentDark : '#ffffff'} />
                     ) : (
-                      <Text style={styles.checkInButtonText}>[ CHECK IN AGAIN ]</Text>
+                      <Text style={[styles.checkInButtonText, { color: isDark ? colors.accentDark : '#ffffff' }]}>Check in again</Text>
                     )}
-                  </TouchableOpacity>
+                  </AppPressable>
                 </View>
               )}
 
               {/* STATE 3: Before Check-In */}
               {!todayState.is_checked_in && !todayState.last_check_out_time && (
                 <View style={styles.notStartedContainer}>
-                  <Text style={styles.notStartedPrompt}>
+                  <Text style={[styles.notStartedPrompt, { color: colors.textMuted }]}>
                     You haven't checked in for today yet.
                   </Text>
 
-                  <TouchableOpacity
-                    style={[styles.checkInButton, punching && styles.buttonDisabled]}
+                  <AppPressable
+                    style={[styles.checkInButton, { backgroundColor: colors.accent }, punching && styles.buttonDisabled]}
                     onPress={() => handlePunch('check_in')}
                     disabled={punching}
                   >
                     {punching ? (
-                      <ActivityIndicator color="#020617" />
+                      <ActivityIndicator color={isDark ? colors.accentDark : '#ffffff'} />
                     ) : (
-                      <Text style={styles.checkInButtonText}>[ CHECK IN ]</Text>
+                      <Text style={[styles.checkInButtonText, { color: isDark ? colors.accentDark : '#ffffff' }]}>Check in</Text>
                     )}
-                  </TouchableOpacity>
+                  </AppPressable>
                 </View>
               )}
             </View>
@@ -234,45 +238,41 @@ export default function HomeScreen() {
         </View>
 
         {/* Quick Shift Summary */}
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryTitle}>Shift Highlights</Text>
+        <View style={[styles.summaryCard, { backgroundColor: colors.bgElevated, borderColor: colors.border }, getCardShadow(isDark)]}>
+          <Text style={[styles.summaryTitle, { color: colors.text }]}>Shift Highlights</Text>
           <View style={styles.summaryGrid}>
             <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>Expected Hours</Text>
-              <Text style={styles.summaryValue}>08h 00m</Text>
+              <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Expected Hours</Text>
+              <Text style={[styles.summaryValue, { color: colors.text }]}>08h 00m</Text>
             </View>
             <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>Attendance Date</Text>
-              <Text style={styles.summaryValue}>{todayState?.attendance_date || '--'}</Text>
+              <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Attendance Date</Text>
+              <Text style={[styles.summaryValue, { color: colors.text }]}>{todayState?.attendance_date || '--'}</Text>
             </View>
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </Screen>
   )
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#020617',
-  },
   scrollContent: {
     padding: 20,
+    paddingBottom: 32,
   },
   header: {
     marginBottom: 24,
   },
   greetingText: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#ffffff',
-    letterSpacing: -0.5,
+    fontSize: 26,
+    letterSpacing: -0.6,
+    ...typeStyle.extrabold,
   },
   dateText: {
     fontSize: 13,
-    color: '#94a3b8',
-    marginTop: 4,
+    marginTop: 6,
+    ...typeStyle.medium,
   },
   badgeRow: {
     flexDirection: 'row',
@@ -281,65 +281,45 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   businessBadge: {
-    backgroundColor: '#1e293b',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
+    borderWidth: 1,
   },
   businessBadgeText: {
-    color: '#cbd5e1',
     fontSize: 11,
     fontWeight: '600',
   },
   empIdBadge: {
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-    borderColor: '#10b981',
     borderWidth: 1,
     paddingHorizontal: 10,
     paddingVertical: 3,
     borderRadius: 8,
   },
   empIdBadgeText: {
-    color: '#10b981',
     fontSize: 11,
-    fontWeight: '700',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    letterSpacing: 0.3,
+    ...typeStyle.monoBold,
   },
   messageBox: {
-    backgroundColor: '#1e293b',
-    borderColor: '#334155',
     borderWidth: 1,
     padding: 12,
     borderRadius: 12,
     marginBottom: 16,
   },
   messageText: {
-    color: '#38bdf8',
     fontSize: 12,
     textAlign: 'center',
   },
   attendanceCard: {
-    backgroundColor: '#0f172a',
     borderRadius: 24,
     padding: 24,
     borderWidth: 1,
-    borderColor: '#1e293b',
-    ...Platform.select({
-      web: { boxShadow: '0 8px 14px rgba(0, 0, 0, 0.4)' },
-      default: {
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.4,
-        shadowRadius: 14,
-        elevation: 8,
-      },
-    }),
     marginBottom: 20,
   },
   cardHeaderTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#94a3b8',
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 20,
@@ -350,7 +330,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   innerLoadingText: {
-    color: '#94a3b8',
     fontSize: 12,
     marginTop: 12,
   },
@@ -359,7 +338,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   notLinkedText: {
-    color: '#94a3b8',
     fontSize: 13,
     textAlign: 'center',
   },
@@ -372,13 +350,10 @@ const styles = StyleSheet.create({
   },
   primaryTime: {
     fontSize: 42,
-    fontWeight: '900',
-    color: '#ffffff',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    letterSpacing: -1,
+    ...typeStyle.monoBold,
   },
   checkedInBadge: {
-    backgroundColor: 'rgba(16, 185, 129, 0.2)',
-    borderColor: '#10b981',
     borderWidth: 1,
     paddingHorizontal: 16,
     paddingVertical: 6,
@@ -387,7 +362,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   checkedInBadgeText: {
-    color: '#10b981',
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 1,
@@ -398,38 +372,25 @@ const styles = StyleSheet.create({
   },
   timerLabel: {
     fontSize: 13,
-    color: '#94a3b8',
     marginBottom: 4,
   },
   timerValue: {
     fontSize: 26,
-    fontWeight: '800',
-    color: '#38bdf8',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    ...typeStyle.monoBold,
   },
   checkOutButton: {
-    backgroundColor: '#e11d48',
     borderRadius: 16,
     width: '100%',
+    minHeight: 52,
     paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    ...Platform.select({
-      web: { boxShadow: '0 6px 10px rgba(225, 29, 72, 0.35)' },
-      default: {
-        shadowColor: '#e11d48',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.35,
-        shadowRadius: 10,
-        elevation: 6,
-      },
-    }),
   },
   checkOutButtonText: {
     color: '#ffffff',
     fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: 1,
+    letterSpacing: 0.2,
+    ...typeStyle.extrabold,
   },
   completedStateContainer: {
     width: '100%',
@@ -443,17 +404,12 @@ const styles = StyleSheet.create({
   },
   completedLabel: {
     fontSize: 14,
-    color: '#94a3b8',
   },
   completedValue: {
     fontSize: 15,
-    fontWeight: '700',
-    color: '#ffffff',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    ...typeStyle.monoBold,
   },
   completedBadge: {
-    backgroundColor: 'rgba(56, 189, 248, 0.15)',
-    borderColor: '#38bdf8',
     borderWidth: 1,
     paddingHorizontal: 16,
     paddingVertical: 6,
@@ -461,7 +417,6 @@ const styles = StyleSheet.create({
     marginVertical: 16,
   },
   completedBadgeText: {
-    color: '#38bdf8',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -471,9 +426,7 @@ const styles = StyleSheet.create({
   },
   totalHoursValue: {
     fontSize: 22,
-    fontWeight: '800',
-    color: '#10b981',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    ...typeStyle.monoBold,
   },
   notStartedContainer: {
     width: '100%',
@@ -481,49 +434,34 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   notStartedPrompt: {
-    color: '#94a3b8',
     fontSize: 14,
     marginBottom: 24,
     textAlign: 'center',
   },
   checkInButton: {
-    backgroundColor: '#10b981',
     borderRadius: 16,
     width: '100%',
+    minHeight: 52,
     paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    ...Platform.select({
-      web: { boxShadow: '0 6px 10px rgba(16, 185, 129, 0.35)' },
-      default: {
-        shadowColor: '#10b981',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.35,
-        shadowRadius: 10,
-        elevation: 6,
-      },
-    }),
   },
   checkInButtonText: {
-    color: '#020617',
     fontSize: 16,
-    fontWeight: '900',
-    letterSpacing: 1,
+    letterSpacing: 0.2,
+    ...typeStyle.extrabold,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   summaryCard: {
-    backgroundColor: '#0f172a',
     borderRadius: 20,
     padding: 18,
     borderWidth: 1,
-    borderColor: '#1e293b',
   },
   summaryTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#cbd5e1',
     marginBottom: 12,
   },
   summaryGrid: {
@@ -535,12 +473,10 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 11,
-    color: '#64748b',
     marginBottom: 4,
   },
   summaryValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#ffffff',
   },
 })

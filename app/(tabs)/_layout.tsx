@@ -1,35 +1,49 @@
 import React from 'react'
 import { Tabs } from 'expo-router'
-import { Text, Platform } from 'react-native'
+import { Platform, Text } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { fonts, type } from '../../src/theme'
+import { useAppTheme } from '../../src/context/ThemeContext'
 
 export default function TabLayout() {
+  const insets = useSafeAreaInsets()
+  const { colors } = useAppTheme()
+  const bottomPad = Math.max(insets.bottom, Platform.OS === 'web' ? 10 : 8)
+
   return (
     <Tabs
       screenOptions={{
         headerStyle: {
-          backgroundColor: '#090d16',
-          borderBottomColor: '#1e293b',
+          backgroundColor: colors.bgElevated,
+          borderBottomColor: colors.border,
           borderBottomWidth: 1,
         },
-        headerTintColor: '#ffffff',
+        headerTintColor: colors.text,
         headerTitleStyle: {
-          fontWeight: '700',
+          ...type.bold,
           fontSize: 17,
+          letterSpacing: -0.35,
         },
+        headerShadowVisible: false,
         tabBarStyle: {
-          backgroundColor: '#090d16',
-          borderTopColor: '#1e293b',
+          backgroundColor: colors.bgElevated,
+          borderTopColor: colors.border,
           borderTopWidth: 1,
-          height: Platform.OS === 'ios' ? 85 : 65,
-          paddingBottom: Platform.OS === 'ios' ? 25 : 10,
+          height: 54 + bottomPad,
+          paddingBottom: bottomPad,
           paddingTop: 8,
         },
-        tabBarActiveTintColor: '#10b981',
-        tabBarInactiveTintColor: '#64748b',
+        tabBarActiveTintColor: colors.accent,
+        tabBarInactiveTintColor: colors.textFaint,
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: '600',
+          letterSpacing: 0.2,
+          fontFamily: fonts.semibold,
         },
+        tabBarItemStyle: {
+          minHeight: 44,
+        },
+        tabBarHideOnKeyboard: true,
       }}
     >
       <Tabs.Screen
