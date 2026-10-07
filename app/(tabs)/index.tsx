@@ -6,6 +6,8 @@ import {
   StyleSheet,
   ScrollView,
   RefreshControl,
+  Modal,
+  TextInput,
   Platform,
 } from 'react-native'
 import apiClient from '../../src/api/client'
@@ -15,6 +17,9 @@ import { AppPressable } from '../../src/components/AppPressable'
 import { Screen } from '../../src/components/Screen'
 import { type as typeStyle, getCardShadow } from '../../src/theme'
 import { useAppTheme } from '../../src/context/ThemeContext'
+import { BiometricEngine } from '../../src/features/biometrics'
+
+type AttendanceMethodType = 'NORMAL' | 'QR' | 'FACE'
 
 export default function HomeScreen() {
   const { user, employee, business } = useAuth()
@@ -24,7 +29,49 @@ export default function HomeScreen() {
   const [punching, setPunching] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [liveSeconds, setLiveSeconds] = useState(0)
+
+  // Method selection: NORMAL, QR, FACE
+  const [selectedMethod, setSelectedMethod] = useState<AttendanceMethodType>('NORMAL')
+
+  // QR Modal State
+  const [qrModalVisible, setQrModalVisible] = useState(false)
+  const [qrInputToken, setQrInputToken] = useState('')
+  const [pendingPunchType, setPendingPunchType] = useState<'check_in' | 'check_out'>('check_in')
+
+  // Face Modal State
+  const [faceModalVisible, setFaceModalVisible] = useState(false)
+  const [faceSimulating, setFaceSimulating] = useState(false)
+
+  // GPS coordinates state
+  const [currentCoords, setCurrentCoords] = useState<{ lat: number; lng: number } | null>(null)
+  const [gpsDetecting, setGpsDetecting] = useState(false)
+
+  // Geolocation detection helper
+  const detectLocation = useCallback((): Promise<{ lat: number; lng: number } | null> => {
+    return new Promise((resolve) => {
+      if (typeof navigator !== 'undefined' && navigator.geolocation) {
+        setGpsDetecting(true)
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            setGpsDetecting(false)
+            const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+            setCurrentCoords(coords)
+            resolve(coords)
+          },
+          () => {
+            setGpsDetecting(false)
+            // Fallback to existing or centre coordinates if in web dev sandbox
+            resolve(currentCoords)
+          },
+          { timeout: 8000, enableHighAccuracy: true }
+        )
+      } else {
+        resolve(currentCoords)
+      }
+    })
+  }, [currentCoords])
 
   // Fetch authoritative state from backend API
   const fetchTodayState = async () => {
@@ -32,10 +79,21 @@ export default function HomeScreen() {
       const res = await apiClient.get('/attendance/today/')
       setTodayState(res.data)
       setLiveSeconds(res.data.total_work_seconds || 0)
-      setStatusMessage(null)
+      setErrorMessage(null)
+
+      // Set default selected method based on allowed methods
+      const allowed = res.data.allowed_methods
+      if (allowed) {
+        if (allowed.normal_punch) {
+          setSelectedMethod('NORMAL')
+        } else if (allowed.qr) {
+          setSelectedMethod('QR')
+        } else if (allowed.face_recognition) {
+          setSelectedMethod('FACE')
+        }
+      }
     } catch (err: any) {
-      // If user has no employee profile, show message
-      setStatusMessage(err.response?.data?.detail || 'Could not retrieve today attendance.')
+      setErrorMessage(err.response?.data?.detail || 'Could not retrieve today attendance.')
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -44,6 +102,7 @@ export default function HomeScreen() {
 
   useEffect(() => {
     fetchTodayState()
+    detectLocation()
   }, [])
 
   // Live timer interval: when checked in, increment working seconds every second
@@ -60,22 +119,109 @@ export default function HomeScreen() {
     fetchTodayState()
   }, [])
 
-  const handlePunch = async (type: 'check_in' | 'check_out') => {
+  // Execute punch
+  const executePunch = async (
+    type: 'check_in' | 'check_out',
+    method: AttendanceMethodType,
+    extra: { qr_token?: string; face_data?: any } = {}
+  ) => {
     try {
       setPunching(true)
       setStatusMessage(null)
+      setErrorMessage(null)
+
+      let lat = currentCoords?.lat
+      let lng = currentCoords?.lng
+
+      // If location is required and coords not yet obtained, attempt to detect
+      if (todayState?.allowed_methods?.location_required && (!lat || !lng)) {
+        const detected = await detectLocation()
+        if (detected) {
+          lat = detected.lat
+          lng = detected.lng
+        }
+      }
+
       const endpoint = type === 'check_in' ? '/attendance/check-in/' : '/attendance/check-out/'
-      const res = await apiClient.post(endpoint, { source: 'MOBILE' })
+      const payload: any = {
+        source: 'MOBILE',
+        attendance_method: method,
+        latitude: lat,
+        longitude: lng,
+        ...extra,
+      }
+
+      const res = await apiClient.post(endpoint, payload)
       setTodayState(res.data)
       setLiveSeconds(res.data.total_work_seconds || 0)
+      setStatusMessage(
+        `${type === 'check_in' ? 'Check-in' : 'Check-out'} recorded successfully via ${method} method.`
+      )
     } catch (err: any) {
-      setStatusMessage(err.response?.data?.detail || `Failed to record punch ${type}.`)
+      const msg =
+        err.response?.data?.detail ||
+        err.response?.data?.error ||
+        `Failed to record punch ${type}.`
+      setErrorMessage(msg)
     } finally {
       setPunching(false)
     }
   }
 
-  // Format seconds into "03h 42m" or "03h 42m 15s"
+  // Handle punch button press
+  const handlePunchPress = (type: 'check_in' | 'check_out') => {
+    if (selectedMethod === 'QR') {
+      setPendingPunchType(type)
+      setQrInputToken('')
+      setQrModalVisible(true)
+    } else if (selectedMethod === 'FACE') {
+      setPendingPunchType(type)
+      setFaceModalVisible(true)
+    } else {
+      executePunch(type, 'NORMAL')
+    }
+  }
+
+  // Handle QR Submit
+  const handleQrSubmit = () => {
+    if (!qrInputToken.trim()) {
+      setErrorMessage('Please enter or scan the QR token from the kiosk screen.')
+      return
+    }
+    setQrModalVisible(false)
+    executePunch(pendingPunchType, 'QR', { qr_token: qrInputToken.trim() })
+  }
+
+  // Handle Face ID Confirm with BiometricEngine
+  const handleFaceAuthenticate = async () => {
+    try {
+      setFaceSimulating(true)
+      setErrorMessage(null)
+
+      const res = await BiometricEngine.verifyLiveFace()
+
+      setFaceSimulating(false)
+      setFaceModalVisible(false)
+
+      if (!res.success) {
+        setErrorMessage(res.errorMessage || 'Face verification failed.')
+        return
+      }
+
+      // Execute punch with cryptographic assertion payload
+      await executePunch(pendingPunchType, 'FACE', {
+        face_data: {
+          verification_assertion: res.assertion,
+        },
+      })
+    } catch (err: any) {
+      setFaceSimulating(false)
+      setFaceModalVisible(false)
+      setErrorMessage(err.message || 'Face verification encountered an error.')
+    }
+  }
+
+  // Format seconds into "03h 42m 15s"
   const formatLiveDuration = (totalSec: number) => {
     const hours = Math.floor(totalSec / 3600)
     const minutes = Math.floor((totalSec % 3600) / 60)
@@ -86,7 +232,7 @@ export default function HomeScreen() {
   // Dynamic greeting based on current local hour
   const getGreeting = () => {
     const hour = new Date().getHours()
-    const name = employee?.first_name || user?.first_name || 'Rahul'
+    const name = employee?.first_name || user?.first_name || 'Team Member'
     if (hour < 12) return `Good morning, ${name}`
     if (hour < 17) return `Good afternoon, ${name}`
     return `Good evening, ${name}`
@@ -98,6 +244,13 @@ export default function HomeScreen() {
     day: 'numeric',
     year: 'numeric',
   })
+
+  const allowed = todayState?.allowed_methods || {
+    normal_punch: true,
+    qr: false,
+    face_recognition: false,
+    location_required: false,
+  }
 
   return (
     <Screen>
@@ -112,7 +265,7 @@ export default function HomeScreen() {
           <Text style={[styles.dateText, { color: colors.textMuted }]}>{currentDateDisplay}</Text>
           <View style={styles.badgeRow}>
             <View style={[styles.businessBadge, { backgroundColor: colors.bgMuted, borderColor: colors.border }]}>
-              <Text style={[styles.businessBadgeText, { color: colors.textMuted }]}>{business?.name || 'OwnManage'}</Text>
+              <Text style={[styles.businessBadgeText, { color: colors.textMuted }]}>{todayState?.centre_name || business?.name || 'OwnManage'}</Text>
             </View>
             {employee?.employee_id && (
               <View style={[styles.empIdBadge, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(5, 150, 105, 0.1)', borderColor: colors.accent }]}>
@@ -123,8 +276,77 @@ export default function HomeScreen() {
         </View>
 
         {statusMessage && (
-          <View style={[styles.messageBox, { backgroundColor: colors.bgMuted, borderColor: colors.border }]}>
-            <Text style={[styles.messageText, { color: colors.info }]}>{statusMessage}</Text>
+          <View style={[styles.messageBox, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.08)', borderColor: colors.accent }]}>
+            <Text style={[styles.messageText, { color: colors.accent }]}>{statusMessage}</Text>
+          </View>
+        )}
+
+        {errorMessage && (
+          <View style={[styles.messageBox, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.08)', borderColor: colors.danger }]}>
+            <Text style={[styles.messageText, { color: colors.danger }]}>{errorMessage}</Text>
+          </View>
+        )}
+
+        {/* Method Selector Chips (Only show enabled methods) */}
+        {!loading && todayState && (
+          <View style={styles.methodSelectorSection}>
+            <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>Attendance Method</Text>
+            <View style={styles.methodChipsRow}>
+              {allowed.normal_punch && (
+                <AppPressable
+                  style={[
+                    styles.methodChip,
+                    { backgroundColor: colors.bgElevated, borderColor: selectedMethod === 'NORMAL' ? colors.accent : colors.border },
+                    selectedMethod === 'NORMAL' && { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)' },
+                  ]}
+                  onPress={() => setSelectedMethod('NORMAL')}
+                >
+                  <Text style={[styles.methodChipText, { color: selectedMethod === 'NORMAL' ? colors.accent : colors.text }]}>
+                    Normal Punch
+                  </Text>
+                </AppPressable>
+              )}
+
+              {allowed.qr && (
+                <AppPressable
+                  style={[
+                    styles.methodChip,
+                    { backgroundColor: colors.bgElevated, borderColor: selectedMethod === 'QR' ? colors.accent : colors.border },
+                    selectedMethod === 'QR' && { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)' },
+                  ]}
+                  onPress={() => setSelectedMethod('QR')}
+                >
+                  <Text style={[styles.methodChipText, { color: selectedMethod === 'QR' ? colors.accent : colors.text }]}>
+                    QR Scan
+                  </Text>
+                </AppPressable>
+              )}
+
+              {allowed.face_recognition && (
+                <AppPressable
+                  style={[
+                    styles.methodChip,
+                    { backgroundColor: colors.bgElevated, borderColor: selectedMethod === 'FACE' ? colors.accent : colors.border },
+                    selectedMethod === 'FACE' && { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)' },
+                  ]}
+                  onPress={() => setSelectedMethod('FACE')}
+                >
+                  <Text style={[styles.methodChipText, { color: selectedMethod === 'FACE' ? colors.accent : colors.text }]}>
+                    Face ID
+                  </Text>
+                </AppPressable>
+              )}
+            </View>
+
+            {/* GPS verification requirement indicator */}
+            {allowed.location_required && (
+              <View style={[styles.gpsNoticeBox, { backgroundColor: isDark ? 'rgba(56, 189, 248, 0.1)' : 'rgba(59, 130, 246, 0.08)', borderColor: colors.info }]}>
+                <Text style={[styles.gpsNoticeText, { color: colors.info }]}>
+                  Location Verification Active ({allowed.geofence_radius || 100}m geofence required)
+                  {gpsDetecting ? ' · Detecting GPS...' : currentCoords ? ' · GPS Acquired' : ''}
+                </Text>
+              </View>
+            )}
           </View>
         )}
 
@@ -152,29 +374,31 @@ export default function HomeScreen() {
                     {todayState.first_check_in_time || '--:--'}
                   </Text>
                   <View style={[styles.checkedInBadge, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.12)', borderColor: colors.accent }]}>
-                    <Text style={[styles.checkedInBadgeText, { color: colors.accent }]}>CHECKED IN</Text>
+                    <Text style={[styles.checkedInBadgeText, { color: colors.accent }]}>CHECKED IN ({todayState.day_status})</Text>
                   </View>
 
                   <View style={styles.timerContainer}>
-                    <Text style={[styles.timerLabel, { color: colors.textMuted }]}>Working:</Text>
+                    <Text style={[styles.timerLabel, { color: colors.textMuted }]}>Working duration:</Text>
                     <Text style={[styles.timerValue, { color: colors.info }]}>{formatLiveDuration(liveSeconds)}</Text>
                   </View>
 
                   <AppPressable
                     style={[styles.checkOutButton, { backgroundColor: colors.danger }, punching && styles.buttonDisabled]}
-                    onPress={() => handlePunch('check_out')}
+                    onPress={() => handlePunchPress('check_out')}
                     disabled={punching}
                   >
                     {punching ? (
                       <ActivityIndicator color="#ffffff" />
                     ) : (
-                      <Text style={styles.checkOutButtonText}>Check out</Text>
+                      <Text style={styles.checkOutButtonText}>
+                        Check out via {selectedMethod}
+                      </Text>
                     )}
                   </AppPressable>
                 </View>
               )}
 
-              {/* STATE 2: After Check-Out (Completed Day) */}
+              {/* STATE 2: After Check-Out (Completed Day or between punches) */}
               {!todayState.is_checked_in && todayState.last_check_out_time && (
                 <View style={styles.completedStateContainer}>
                   <View style={styles.completedRow}>
@@ -187,7 +411,7 @@ export default function HomeScreen() {
                   </View>
 
                   <View style={[styles.completedBadge, { backgroundColor: isDark ? 'rgba(56, 189, 248, 0.15)' : 'rgba(59, 130, 246, 0.1)', borderColor: colors.info }]}>
-                    <Text style={[styles.completedBadgeText, { color: colors.info }]}>Completed</Text>
+                    <Text style={[styles.completedBadgeText, { color: colors.info }]}>Status: {todayState.day_status}</Text>
                   </View>
 
                   <View style={styles.totalHoursRow}>
@@ -198,16 +422,17 @@ export default function HomeScreen() {
                     </Text>
                   </View>
 
-                  {/* Allow punch-in again if multiple check-ins are permitted in the workday */}
                   <AppPressable
                     style={[styles.checkInButton, { backgroundColor: colors.accent, marginTop: 20 }, punching && styles.buttonDisabled]}
-                    onPress={() => handlePunch('check_in')}
+                    onPress={() => handlePunchPress('check_in')}
                     disabled={punching}
                   >
                     {punching ? (
                       <ActivityIndicator color={isDark ? colors.accentDark : '#ffffff'} />
                     ) : (
-                      <Text style={[styles.checkInButtonText, { color: isDark ? colors.accentDark : '#ffffff' }]}>Check in again</Text>
+                      <Text style={[styles.checkInButtonText, { color: isDark ? colors.accentDark : '#ffffff' }]}>
+                        Check in again via {selectedMethod}
+                      </Text>
                     )}
                   </AppPressable>
                 </View>
@@ -217,18 +442,20 @@ export default function HomeScreen() {
               {!todayState.is_checked_in && !todayState.last_check_out_time && (
                 <View style={styles.notStartedContainer}>
                   <Text style={[styles.notStartedPrompt, { color: colors.textMuted }]}>
-                    You haven't checked in for today yet.
+                    You haven't checked in for today yet. Status: {todayState.day_status || 'NOT MARKED'}
                   </Text>
 
                   <AppPressable
                     style={[styles.checkInButton, { backgroundColor: colors.accent }, punching && styles.buttonDisabled]}
-                    onPress={() => handlePunch('check_in')}
+                    onPress={() => handlePunchPress('check_in')}
                     disabled={punching}
                   >
                     {punching ? (
                       <ActivityIndicator color={isDark ? colors.accentDark : '#ffffff'} />
                     ) : (
-                      <Text style={[styles.checkInButtonText, { color: isDark ? colors.accentDark : '#ffffff' }]}>Check in</Text>
+                      <Text style={[styles.checkInButtonText, { color: isDark ? colors.accentDark : '#ffffff' }]}>
+                        Check in via {selectedMethod}
+                      </Text>
                     )}
                   </AppPressable>
                 </View>
@@ -237,20 +464,105 @@ export default function HomeScreen() {
           )}
         </View>
 
+        {/* Today's Punches Chronicle */}
+        {todayState?.events && todayState.events.length > 0 && (
+          <View style={[styles.summaryCard, { backgroundColor: colors.bgElevated, borderColor: colors.border }, getCardShadow(isDark)]}>
+            <Text style={[styles.summaryTitle, { color: colors.text }]}>Today's Activity Log</Text>
+            {todayState.events.map((ev, idx) => (
+              <View key={ev.id || idx} style={[styles.eventRow, { borderBottomColor: colors.border }]}>
+                <View>
+                  <Text style={[styles.eventType, { color: ev.event_type === 'CHECK_IN' ? colors.accent : colors.danger }]}>
+                    {ev.event_type === 'CHECK_IN' ? 'Check In' : 'Check Out'}
+                  </Text>
+                  <Text style={[styles.eventTime, { color: colors.textMuted }]}>
+                    {new Date(ev.event_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {ev.attendance_method || 'NORMAL'}
+                  </Text>
+                </View>
+                {ev.location_verified && (
+                  <View style={[styles.locationBadge, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.1)' }]}>
+                    <Text style={[styles.locationBadgeText, { color: colors.accent }]}>GPS Verified</Text>
+                  </View>
+                )}
+              </View>
+            ))}
+          </View>
+        )}
+
         {/* Quick Shift Summary */}
-        <View style={[styles.summaryCard, { backgroundColor: colors.bgElevated, borderColor: colors.border }, getCardShadow(isDark)]}>
+        <View style={[styles.summaryCard, { backgroundColor: colors.bgElevated, borderColor: colors.border, marginTop: 16 }, getCardShadow(isDark)]}>
           <Text style={[styles.summaryTitle, { color: colors.text }]}>Shift Highlights</Text>
           <View style={styles.summaryGrid}>
             <View style={styles.summaryItem}>
-              <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Expected Hours</Text>
-              <Text style={[styles.summaryValue, { color: colors.text }]}>08h 00m</Text>
+              <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Centre</Text>
+              <Text style={[styles.summaryValue, { color: colors.text }]}>{todayState?.centre_name || 'Main'}</Text>
             </View>
             <View style={styles.summaryItem}>
-              <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Attendance Date</Text>
+              <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Date</Text>
               <Text style={[styles.summaryValue, { color: colors.text }]}>{todayState?.attendance_date || '--'}</Text>
             </View>
           </View>
         </View>
+
+        {/* QR Code Input / Scan Modal */}
+        <Modal visible={qrModalVisible} transparent animationType="slide" onRequestClose={() => setQrModalVisible(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalBox, { backgroundColor: colors.bgElevated, borderColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>QR Code Attendance</Text>
+              <Text style={[styles.modalSubtitle, { color: colors.textMuted }]}>
+                Scan or enter the current kiosk token displayed at your centre.
+              </Text>
+              <TextInput
+                style={[styles.modalInput, { backgroundColor: colors.bgMuted, borderColor: colors.border, color: colors.text }]}
+                placeholder="Enter QR token"
+                placeholderTextColor={colors.textMuted}
+                value={qrInputToken}
+                onChangeText={setQrInputToken}
+                autoCapitalize="characters"
+              />
+              <View style={styles.modalActionRow}>
+                <AppPressable style={[styles.modalBtn, { backgroundColor: colors.bgMuted }]} onPress={() => setQrModalVisible(false)}>
+                  <Text style={[styles.modalBtnText, { color: colors.text }]}>Cancel</Text>
+                </AppPressable>
+                <AppPressable style={[styles.modalBtn, { backgroundColor: colors.accent }]} onPress={handleQrSubmit}>
+                  <Text style={[styles.modalBtnText, { color: isDark ? colors.accentDark : '#ffffff' }]}>Confirm Punch</Text>
+                </AppPressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Face Recognition Modal */}
+        <Modal visible={faceModalVisible} transparent animationType="fade" onRequestClose={() => setFaceModalVisible(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalBox, { backgroundColor: colors.bgElevated, borderColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>ARC Face Verification</Text>
+              <Text style={[styles.modalSubtitle, { color: colors.textMuted }]}>
+                Align your face within the frame to authenticate with the ARC engine.
+              </Text>
+              <View style={[styles.faceScannerBox, { borderColor: colors.accent, backgroundColor: colors.bgMuted }]}>
+                {faceSimulating ? (
+                  <ActivityIndicator size="large" color={colors.accent} />
+                ) : (
+                  <Text style={[styles.faceScannerText, { color: colors.accent }]}>[ Face In Frame ]</Text>
+                )}
+              </View>
+              <View style={styles.modalActionRow}>
+                <AppPressable style={[styles.modalBtn, { backgroundColor: colors.bgMuted }]} onPress={() => setFaceModalVisible(false)}>
+                  <Text style={[styles.modalBtnText, { color: colors.text }]}>Cancel</Text>
+                </AppPressable>
+                <AppPressable
+                  style={[styles.modalBtn, { backgroundColor: colors.accent }, faceSimulating && styles.buttonDisabled]}
+                  onPress={handleFaceAuthenticate}
+                  disabled={faceSimulating}
+                >
+                  <Text style={[styles.modalBtnText, { color: isDark ? colors.accentDark : '#ffffff' }]}>
+                    {faceSimulating ? 'Verifying...' : 'Authenticate'}
+                  </Text>
+                </AppPressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
     </Screen>
   )
@@ -262,7 +574,7 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   header: {
-    marginBottom: 24,
+    marginBottom: 20,
   },
   greetingText: {
     fontSize: 26,
@@ -310,6 +622,43 @@ const styles = StyleSheet.create({
   messageText: {
     fontSize: 12,
     textAlign: 'center',
+    fontWeight: '600',
+  },
+  methodSelectorSection: {
+    marginBottom: 16,
+  },
+  sectionSubtitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 8,
+  },
+  methodChipsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  methodChip: {
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  methodChipText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  gpsNoticeBox: {
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  gpsNoticeText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   attendanceCard: {
     borderRadius: 24,
@@ -478,5 +827,88 @@ const styles = StyleSheet.create({
   summaryValue: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  eventRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+  },
+  eventType: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  eventTime: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  locationBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  locationBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalBox: {
+    width: '100%',
+    maxWidth: 380,
+    borderRadius: 20,
+    padding: 24,
+    borderWidth: 1,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    marginBottom: 16,
+    lineHeight: 18,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 14,
+    marginBottom: 20,
+  },
+  modalActionRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+  },
+  modalBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  modalBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  faceScannerBox: {
+    height: 140,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  faceScannerText: {
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 1,
   },
 })

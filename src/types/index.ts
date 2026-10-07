@@ -34,6 +34,16 @@ export interface EmployeeSummary {
   manager_name?: string
 }
 
+export interface AttendanceAllowedMethods {
+  normal_punch: boolean
+  qr: boolean
+  face_recognition: boolean
+  location_required: boolean
+  geofence_radius?: number
+  centre_latitude?: number | null
+  centre_longitude?: number | null
+}
+
 export interface TodayAttendanceState {
   attendance_day_id?: string
   attendance_date: string
@@ -44,11 +54,16 @@ export interface TodayAttendanceState {
   first_check_in_time?: string | null
   last_check_out_time?: string | null
   last_event_type?: string | null
+  allowed_methods?: AttendanceAllowedMethods
+  centre_id?: string | null
+  centre_name?: string | null
   events?: {
     id: string
     event_type: 'CHECK_IN' | 'CHECK_OUT'
     event_time: string
     source: string
+    attendance_method?: string
+    location_verified?: boolean
   }[]
 }
 

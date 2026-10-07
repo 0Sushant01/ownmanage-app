@@ -36,6 +36,7 @@ const getStatusConfig = (status: string, isDark: boolean): StatusConfig => {
     HOLIDAY:     { dot: '#a78bfa', bg: isDark ? 'rgba(167,139,250,0.1)' : 'rgba(167,139,250,0.12)', badgeBg: '#a78bfa', badgeText: '#ffffff', label: 'Holiday',    shortLabel: 'Holiday' },
     WEEK_OFF:    { dot: isDark ? '#94a3b8' : '#64748b', bg: isDark ? 'rgba(148,163,184,0.08)' : 'rgba(100,116,139,0.08)', badgeBg: isDark ? '#475569' : '#64748b', badgeText: '#ffffff', label: 'Weekly Off', shortLabel: 'Week Off' },
     FUTURE:      { dot: isDark ? '#334155' : '#cbd5e1', bg: 'transparent',            badgeBg: 'transparent', badgeText: isDark ? '#475569' : '#94a3b8', label: 'Upcoming', shortLabel: '' },
+    NOT_MARKED:  { dot: isDark ? '#64748b' : '#94a3b8', bg: isDark ? 'rgba(100,116,139,0.1)' : 'rgba(100,116,139,0.08)', badgeBg: isDark ? '#334155' : '#e2e8f0', badgeText: isDark ? '#94a3b8' : '#64748b', label: 'Not Marked', shortLabel: 'Not Marked' },
     NO_DATA:     { dot: isDark ? '#475569' : '#cbd5e1', bg: 'transparent',            badgeBg: 'transparent', badgeText: isDark ? '#475569' : '#94a3b8', label: 'No Data',  shortLabel: '' },
   }
   return configs[status] || configs.NO_DATA
