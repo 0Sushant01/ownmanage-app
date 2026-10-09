@@ -8,6 +8,7 @@ import {
   RefreshControl,
   Modal,
   Platform,
+  Pressable,
 } from 'react-native'
 import apiClient from '../../src/api/client'
 import type { CalendarDayRecord, CalendarSummary } from '../../src/types'
@@ -311,11 +312,13 @@ export default function CalendarScreen() {
           animationType="slide"
           onRequestClose={() => setSelectedDay(null)}
         >
-          <AppPressable
+          <Pressable
+            accessibilityRole="none"
             style={styles.modalOverlay}
             onPress={() => setSelectedDay(null)}
           >
-            <AppPressable
+            <Pressable
+              accessibilityRole="none"
               style={[styles.modalSheet, { backgroundColor: colors.bgElevated, borderColor: colors.border }]}
               onPress={(e) => e.stopPropagation()}
             >
@@ -370,8 +373,8 @@ export default function CalendarScreen() {
               >
                 <Text style={[styles.modalCloseText, { color: isDark ? colors.accentDark : '#ffffff' }]}>Done</Text>
               </AppPressable>
-            </AppPressable>
-          </AppPressable>
+            </Pressable>
+          </Pressable>
         </Modal>
       )}
     </Screen>
@@ -445,9 +448,9 @@ function ModalRow({
 const styles = StyleSheet.create({
   scrollContent: {
     width: '100%',
-    maxWidth: 480,
+    maxWidth: 720,
     alignSelf: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 40,
   },

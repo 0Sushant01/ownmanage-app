@@ -361,6 +361,9 @@ export default function LeaveScreen() {
 const styles = StyleSheet.create({
   scrollContent: {
     padding: 20,
+    width: '100%',
+    maxWidth: 680,
+    alignSelf: 'center',
   },
   topBar: {
     marginBottom: 20,

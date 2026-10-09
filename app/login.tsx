@@ -180,6 +180,9 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     padding: 24,
+    width: '100%',
+    maxWidth: 440,
+    alignSelf: 'center',
   },
   loadingContainer: {
     flex: 1,

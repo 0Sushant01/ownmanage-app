@@ -244,6 +244,47 @@ export default function ProfileScreen() {
               </View>
             </View>
 
+            {/* My Salary & Payslips Navigation Card */}
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => router.push('/salary')}
+              style={[
+                styles.sectionCard,
+                {
+                  backgroundColor: colors.bgElevated,
+                  borderColor: colors.border,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  paddingVertical: 16,
+                },
+              ]}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+                <View
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 12,
+                    backgroundColor: `${colors.accent}15`,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text style={{ fontSize: 22 }}>💳</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 2 }]}>
+                    My Salary & Payslips
+                  </Text>
+                  <Text style={[styles.itemLabel, { color: colors.textMuted, marginBottom: 0 }]}>
+                    View earnings, deductions, overtime, and monthly slips
+                  </Text>
+                </View>
+              </View>
+              <Text style={{ fontSize: 20, color: colors.textMuted, marginLeft: 8 }}>›</Text>
+            </TouchableOpacity>
+
             {/* Contact Details Card */}
             <View style={[styles.sectionCard, { backgroundColor: colors.bgElevated, borderColor: colors.border }]}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>Contact Information</Text>
@@ -293,6 +334,9 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   scrollContent: {
     padding: 20,
+    width: '100%',
+    maxWidth: 680,
+    alignSelf: 'center',
   },
   loadingBox: {
     paddingVertical: 60,

@@ -242,6 +242,9 @@ export default function SalaryScreen() {
 const styles = StyleSheet.create({
   scrollContent: {
     padding: 20,
+    width: '100%',
+    maxWidth: 680,
+    alignSelf: 'center',
   },
   header: {
     marginBottom: 20,

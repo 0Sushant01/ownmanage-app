@@ -10,6 +10,7 @@ import {
   TextInput,
   Platform,
 } from 'react-native'
+import { useRouter } from 'expo-router'
 import apiClient from '../../src/api/client'
 import { useAuth } from '../../src/context/AuthContext'
 import type { TodayAttendanceState } from '../../src/types'
@@ -22,6 +23,7 @@ import { BiometricEngine } from '../../src/features/biometrics'
 type AttendanceMethodType = 'NORMAL' | 'QR' | 'FACE'
 
 export default function HomeScreen() {
+  const router = useRouter()
   const { user, employee, business } = useAuth()
   const { colors, isDark } = useAppTheme()
   const [todayState, setTodayState] = useState<TodayAttendanceState | null>(null)
@@ -503,6 +505,75 @@ export default function HomeScreen() {
           </View>
         </View>
 
+        {/* Quick Navigation Shortcuts */}
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+          <AppPressable
+            accessibilityRole="button"
+            onPress={() => router.push('/salary')}
+            style={[
+              styles.summaryCard,
+              {
+                flex: 1,
+                marginTop: 0,
+                backgroundColor: colors.bgElevated,
+                borderColor: colors.border,
+                paddingVertical: 12,
+                paddingHorizontal: 14,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              },
+              getCardShadow(isDark),
+            ]}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Text style={{ fontSize: 18 }}>💳</Text>
+              <View>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>
+                  My Payslips
+                </Text>
+                <Text style={{ fontSize: 11, color: colors.textMuted }}>
+                  Salary details
+                </Text>
+              </View>
+            </View>
+            <Text style={{ fontSize: 16, color: colors.textMuted }}>›</Text>
+          </AppPressable>
+
+          <AppPressable
+            accessibilityRole="button"
+            onPress={() => router.push('/meetings')}
+            style={[
+              styles.summaryCard,
+              {
+                flex: 1,
+                marginTop: 0,
+                backgroundColor: colors.bgElevated,
+                borderColor: colors.border,
+                paddingVertical: 12,
+                paddingHorizontal: 14,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              },
+              getCardShadow(isDark),
+            ]}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Text style={{ fontSize: 18 }}>🤝</Text>
+              <View>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>
+                  Meetings
+                </Text>
+                <Text style={{ fontSize: 11, color: colors.textMuted }}>
+                  Schedules & RSVP
+                </Text>
+              </View>
+            </View>
+            <Text style={{ fontSize: 16, color: colors.textMuted }}>›</Text>
+          </AppPressable>
+        </View>
+
         {/* QR Code Input / Scan Modal */}
         <Modal visible={qrModalVisible} transparent animationType="slide" onRequestClose={() => setQrModalVisible(false)}>
           <View style={styles.modalOverlay}>
@@ -572,6 +643,9 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 20,
     paddingBottom: 32,
+    width: '100%',
+    maxWidth: 680,
+    alignSelf: 'center',
   },
   header: {
     marginBottom: 20,

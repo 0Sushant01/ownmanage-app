@@ -133,3 +133,60 @@ export interface Payroll {
   status: string
   generated_at: string
 }
+
+export type MeetingStatus = 'SCHEDULED' | 'COMPLETED' | 'CANCELLED'
+export type ParticipantResponseStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'TENTATIVE'
+export type ParticipantRole = 'HOST' | 'CO_HOST' | 'ATTENDEE' | 'OPTIONAL'
+
+export interface MeetingParticipant {
+  id: string
+  user_id: string
+  employee_id?: string
+  full_name: string
+  email: string
+  role: ParticipantRole
+  response_status: ParticipantResponseStatus
+  response_note?: string
+  responded_at?: string
+}
+
+export interface MeetingExternalGuest {
+  id: string
+  email: string
+  name?: string
+  response_status: ParticipantResponseStatus
+}
+
+export interface MeetingItem {
+  id: string
+  business_id: string
+  branch_id?: string
+  branch_name?: string
+  title: string
+  description?: string
+  meeting_date: string
+  start_time: string
+  end_time: string
+  duration_minutes: number
+  timezone: string
+  location_type: 'ONLINE' | 'IN_PERSON' | 'OTHER'
+  location_details?: string
+  meeting_url?: string
+  status: MeetingStatus
+  cancellation_reason?: string
+  organizer_id: string
+  organizer_name: string
+  organizer_email: string
+  is_organizer: boolean
+  my_response_status?: ParticipantResponseStatus
+  participants_count: number
+  accepted_count: number
+  declined_count: number
+  pending_count: number
+  participants?: MeetingParticipant[]
+  external_guests?: MeetingExternalGuest[]
+  can_edit?: boolean
+  can_cancel?: boolean
+  can_respond?: boolean
+  created_at: string
+}

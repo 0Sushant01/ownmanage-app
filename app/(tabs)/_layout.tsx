@@ -65,6 +65,15 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="meetings"
+        options={{
+          title: 'Meetings',
+          headerTitle: 'Meetings & Schedule',
+          tabBarLabel: 'Meetings',
+          tabBarIcon: ({ color }) => <Text style={{ fontSize: 18, color }}>🤝</Text>,
+        }}
+      />
+      <Tabs.Screen
         name="leave"
         options={{
           title: 'Leave',
@@ -76,10 +85,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="salary"
         options={{
+          href: null,
           title: 'Salary',
           headerTitle: 'My Salary & Payslips',
-          tabBarLabel: 'Salary',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 18, color }}>💳</Text>,
         }}
       />
       <Tabs.Screen
