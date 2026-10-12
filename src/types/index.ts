@@ -190,3 +190,29 @@ export interface MeetingItem {
   can_respond?: boolean
   created_at: string
 }
+
+export type DocumentVerificationStatus = 'PENDING' | 'VERIFIED' | 'REJECTED'
+
+export interface EmployeeDocumentItem {
+  id: string
+  business?: string
+  employee: string
+  title: string
+  category: string
+  category_display?: string
+  file_url?: string
+  file_name?: string
+  file_size_bytes?: number
+  issue_date?: string
+  expiry_date?: string
+  verification_status: DocumentVerificationStatus
+  verification_status_display?: string
+  remarks?: string
+  verified_by?: string
+  verified_by_name?: string
+  verified_at?: string
+  uploaded_by?: string
+  uploaded_by_name?: string
+  is_deleted?: boolean
+  created_at: string
+}

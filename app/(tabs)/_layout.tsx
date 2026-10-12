@@ -1,7 +1,8 @@
 import React from 'react'
 import { Tabs } from 'expo-router'
-import { Platform, Text } from 'react-native'
+import { Platform } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Ionicons } from '@expo/vector-icons'
 import { fonts, type } from '../../src/theme'
 import { useAppTheme } from '../../src/context/ThemeContext'
 
@@ -52,7 +53,9 @@ export default function TabLayout() {
           title: 'Home',
           headerTitle: 'OwnManage Attendance',
           tabBarLabel: 'Home',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 18, color }}>⏱️</Text>,
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'time' : 'time-outline'} size={20} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -61,7 +64,9 @@ export default function TabLayout() {
           title: 'Calendar',
           headerTitle: 'Attendance Calendar',
           tabBarLabel: 'Calendar',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 18, color }}>📅</Text>,
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={20} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -70,7 +75,9 @@ export default function TabLayout() {
           title: 'Meetings',
           headerTitle: 'Meetings & Schedule',
           tabBarLabel: 'Meetings',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 18, color }}>🤝</Text>,
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'people' : 'people-outline'} size={20} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -79,7 +86,9 @@ export default function TabLayout() {
           title: 'Leave',
           headerTitle: 'Leave Management',
           tabBarLabel: 'Leave',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 18, color }}>🏖️</Text>,
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'briefcase' : 'briefcase-outline'} size={20} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -96,7 +105,9 @@ export default function TabLayout() {
           title: 'Profile',
           headerTitle: 'Employee Profile',
           tabBarLabel: 'Profile',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 18, color }}>👤</Text>,
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'person' : 'person-outline'} size={20} color={color} />
+          ),
         }}
       />
     </Tabs>

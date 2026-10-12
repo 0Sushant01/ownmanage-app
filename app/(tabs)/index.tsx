@@ -19,6 +19,7 @@ import { Screen } from '../../src/components/Screen'
 import { type as typeStyle, getCardShadow } from '../../src/theme'
 import { useAppTheme } from '../../src/context/ThemeContext'
 import { BiometricEngine } from '../../src/features/biometrics'
+import { Ionicons } from '@expo/vector-icons'
 
 type AttendanceMethodType = 'NORMAL' | 'QR' | 'FACE'
 
@@ -527,7 +528,7 @@ export default function HomeScreen() {
             ]}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <Text style={{ fontSize: 18 }}>💳</Text>
+              <Ionicons name="wallet-outline" size={18} color={colors.accent} />
               <View>
                 <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>
                   My Payslips
@@ -560,7 +561,7 @@ export default function HomeScreen() {
             ]}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <Text style={{ fontSize: 18 }}>🤝</Text>
+              <Ionicons name="people-outline" size={18} color={colors.accent} />
               <View>
                 <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>
                   Meetings

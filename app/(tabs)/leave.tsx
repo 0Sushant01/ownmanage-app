@@ -16,6 +16,7 @@ import type { LeaveRequest, LeaveType } from '../../src/types'
 import { Screen } from '../../src/components/Screen'
 import { useAppTheme } from '../../src/context/ThemeContext'
 import { getCardShadow } from '../../src/theme'
+import { Ionicons } from '@expo/vector-icons'
 
 export default function LeaveScreen() {
   const { colors, isDark } = useAppTheme()
@@ -185,7 +186,7 @@ export default function LeaveScreen() {
           </View>
         ) : leaves.length === 0 ? (
           <View style={styles.emptyBox}>
-            <Text style={styles.emptyIcon}>🏖️</Text>
+            <Ionicons name="briefcase-outline" size={36} color={colors.textFaint} style={{ marginBottom: 8 }} />
             <Text style={[styles.emptyTitle, { color: colors.text }]}>No Leave Applications</Text>
             <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>You have no submitted leave requests in this category.</Text>
           </View>
@@ -250,7 +251,7 @@ export default function LeaveScreen() {
             <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>Apply For Leave</Text>
               <TouchableOpacity onPress={() => setApplyModalOpen(false)}>
-                <Text style={[styles.closeIcon, { color: colors.textMuted }]}>✕</Text>
+                <Ionicons name="close" size={18} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
 

@@ -19,6 +19,7 @@ import type { MeetingItem, ParticipantResponseStatus } from '../../src/types'
 import { Screen } from '../../src/components/Screen'
 import { useAppTheme } from '../../src/context/ThemeContext'
 import { getCardShadow } from '../../src/theme'
+import { Ionicons } from '@expo/vector-icons'
 
 export default function MeetingsScreen() {
   const { user, role } = useAuth()
@@ -253,10 +254,11 @@ export default function MeetingsScreen() {
                 setScheduleError(null)
                 setScheduleModalOpen(true)
               }}
-              style={[styles.scheduleBtn, { backgroundColor: colors.accent }]}
+              style={[styles.scheduleBtn, { backgroundColor: colors.accent, flexDirection: 'row', alignItems: 'center', gap: 4 }]}
             >
+              <Ionicons name="add" size={16} color={isDark ? colors.accentDark : '#ffffff'} />
               <Text style={[styles.scheduleBtnText, { color: isDark ? colors.accentDark : '#ffffff' }]}>
-                + Schedule
+                Schedule
               </Text>
             </TouchableOpacity>
           )}
@@ -283,7 +285,7 @@ export default function MeetingsScreen() {
           </View>
         ) : filteredMeetings.length === 0 ? (
           <View style={[styles.emptyBox, { backgroundColor: colors.bgElevated, borderColor: colors.border }]}>
-            <Text style={{ fontSize: 32, marginBottom: 8 }}>🤝</Text>
+            <Ionicons name="people-outline" size={36} color={colors.textMuted} style={{ marginBottom: 8 }} />
             <Text style={[styles.emptyTitle, { color: colors.text }]}>No Meetings Found</Text>
             <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
               {filter === 'TODAY'
@@ -334,9 +336,12 @@ export default function MeetingsScreen() {
                             {isToday ? 'Today' : m.meeting_date}
                           </Text>
                         </View>
-                        <Text style={[styles.timeText, { color: colors.textMuted }]}>
-                          ⏱️ {m.start_time.slice(0, 5)} - {m.end_time.slice(0, 5)}
-                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <Ionicons name="time-outline" size={12} color={colors.textMuted} />
+                          <Text style={[styles.timeText, { color: colors.textMuted }]}>
+                            {m.start_time.slice(0, 5)} - {m.end_time.slice(0, 5)}
+                          </Text>
+                        </View>
                       </View>
                       <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={2}>
                         {m.title}
@@ -374,12 +379,22 @@ export default function MeetingsScreen() {
 
                   {/* Location / Call link info */}
                   <View style={styles.cardMetaRow}>
-                    <Text style={[styles.metaText, { color: colors.textMuted }]}>
-                      {m.location_type === 'ONLINE' ? '📹 Online Video Call' : '📍 ' + (m.location_details || 'In-Person')}
-                    </Text>
-                    <Text style={[styles.metaText, { color: colors.textMuted }]}>
-                      👥 {m.participants_count} {m.participants_count === 1 ? 'attendee' : 'attendees'}
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                      <Ionicons
+                        name={m.location_type === 'ONLINE' ? 'videocam-outline' : 'location-outline'}
+                        size={14}
+                        color={colors.textMuted}
+                      />
+                      <Text style={[styles.metaText, { color: colors.textMuted }]}>
+                        {m.location_type === 'ONLINE' ? 'Online Video Call' : (m.location_details || 'In-Person')}
+                      </Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                      <Ionicons name="people-outline" size={14} color={colors.textMuted} />
+                      <Text style={[styles.metaText, { color: colors.textMuted }]}>
+                        {m.participants_count} {m.participants_count === 1 ? 'attendee' : 'attendees'}
+                      </Text>
+                    </View>
                   </View>
 
                   {/* Video Call Quick Join Button */}
@@ -389,10 +404,11 @@ export default function MeetingsScreen() {
                         e.stopPropagation()
                         if (m.meeting_url) Linking.openURL(m.meeting_url)
                       }}
-                      style={[styles.joinBtn, { backgroundColor: `${colors.accent}15`, borderColor: colors.accent }]}
+                      style={[styles.joinBtn, { backgroundColor: `${colors.accent}15`, borderColor: colors.accent, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]}
                     >
+                      <Ionicons name="videocam-outline" size={14} color={colors.accent} />
                       <Text style={[styles.joinBtnText, { color: colors.accent }]}>
-                        🎥 Join Call Link
+                        Join Call Link
                       </Text>
                     </TouchableOpacity>
                   )}
@@ -507,25 +523,34 @@ export default function MeetingsScreen() {
                   <Text style={[styles.modalTitle, { color: colors.text }]} numberOfLines={2}>
                     {selectedMeeting.title}
                   </Text>
-                  <TouchableOpacity onPress={() => setSelectedMeeting(null)}>
-                    <Text style={{ fontSize: 18, color: colors.textMuted }}>✕</Text>
+                  <TouchableOpacity onPress={() => setSelectedMeeting(null)} hitSlop={8}>
+                    <Ionicons name="close" size={20} color={colors.textMuted} />
                   </TouchableOpacity>
                 </View>
 
                 <ScrollView style={{ maxHeight: 420 }}>
                   <View style={styles.detailSection}>
                     <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Schedule</Text>
-                    <Text style={[styles.detailValue, { color: colors.text }]}>
-                      📅 {selectedMeeting.meeting_date} · ⏱️ {selectedMeeting.start_time.slice(0, 5)} -{' '}
-                      {selectedMeeting.end_time.slice(0, 5)} ({selectedMeeting.duration_minutes}m)
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                      <Ionicons name="calendar-outline" size={14} color={colors.textMuted} />
+                      <Text style={[styles.detailValue, { color: colors.text }]}>
+                        {selectedMeeting.meeting_date}
+                      </Text>
+                      <Ionicons name="time-outline" size={14} color={colors.textMuted} style={{ marginLeft: 6 }} />
+                      <Text style={[styles.detailValue, { color: colors.text }]}>
+                        {selectedMeeting.start_time.slice(0, 5)} - {selectedMeeting.end_time.slice(0, 5)} ({selectedMeeting.duration_minutes}m)
+                      </Text>
+                    </View>
                   </View>
 
                   <View style={styles.detailSection}>
                     <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Organizer</Text>
-                    <Text style={[styles.detailValue, { color: colors.text }]}>
-                      👤 {selectedMeeting.organizer_name} ({selectedMeeting.organizer_email})
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                      <Ionicons name="person-outline" size={14} color={colors.textMuted} />
+                      <Text style={[styles.detailValue, { color: colors.text }]}>
+                        {selectedMeeting.organizer_name} ({selectedMeeting.organizer_email})
+                      </Text>
+                    </View>
                   </View>
 
                   {selectedMeeting.description ? (
@@ -555,9 +580,12 @@ export default function MeetingsScreen() {
                   {selectedMeeting.location_details ? (
                     <View style={styles.detailSection}>
                       <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Location Details</Text>
-                      <Text style={[styles.detailValue, { color: colors.text }]}>
-                        📍 {selectedMeeting.location_details}
-                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                        <Ionicons name="location-outline" size={14} color={colors.textMuted} />
+                        <Text style={[styles.detailValue, { color: colors.text }]}>
+                          {selectedMeeting.location_details}
+                        </Text>
+                      </View>
                     </View>
                   ) : null}
 
@@ -565,16 +593,25 @@ export default function MeetingsScreen() {
                     <Text style={[styles.detailLabel, { color: colors.textMuted }]}>
                       Participants ({selectedMeeting.participants_count})
                     </Text>
-                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
-                      <Text style={{ fontSize: 12, color: colors.success }}>
-                        ✓ {selectedMeeting.accepted_count} Accepted
-                      </Text>
-                      <Text style={{ fontSize: 12, color: colors.danger }}>
-                        ✗ {selectedMeeting.declined_count} Declined
-                      </Text>
-                      <Text style={{ fontSize: 12, color: colors.textMuted }}>
-                        ⏳ {selectedMeeting.pending_count} Pending
-                      </Text>
+                    <View style={{ flexDirection: 'row', gap: 12, marginTop: 4 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <Ionicons name="checkmark-circle-outline" size={14} color={colors.success} />
+                        <Text style={{ fontSize: 12, color: colors.success }}>
+                          {selectedMeeting.accepted_count} Accepted
+                        </Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <Ionicons name="close-circle-outline" size={14} color={colors.danger} />
+                        <Text style={{ fontSize: 12, color: colors.danger }}>
+                          {selectedMeeting.declined_count} Declined
+                        </Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <Ionicons name="time-outline" size={14} color={colors.textMuted} />
+                        <Text style={{ fontSize: 12, color: colors.textMuted }}>
+                          {selectedMeeting.pending_count} Pending
+                        </Text>
+                      </View>
                     </View>
                   </View>
                 </ScrollView>
@@ -613,8 +650,8 @@ export default function MeetingsScreen() {
 
               <View style={styles.modalHeaderRow}>
                 <Text style={[styles.modalTitle, { color: colors.text }]}>Schedule a Meeting</Text>
-                <TouchableOpacity onPress={() => setScheduleModalOpen(false)}>
-                  <Text style={{ fontSize: 18, color: colors.textMuted }}>✕</Text>
+                <TouchableOpacity onPress={() => setScheduleModalOpen(false)} hitSlop={8}>
+                  <Ionicons name="close" size={20} color={colors.textMuted} />
                 </TouchableOpacity>
               </View>
 
@@ -627,15 +664,22 @@ export default function MeetingsScreen() {
 
                 {conflictWarning && (
                   <View style={[styles.messageBox, { backgroundColor: 'rgba(245, 158, 11, 0.1)', borderColor: '#f59e0b', marginBottom: 12 }]}>
-                    <Text style={[styles.messageText, { color: '#f59e0b', fontWeight: '700', marginBottom: 4 }]}>
-                      ⚠️ Schedule Overlap Detected
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                      <Ionicons name="warning-outline" size={16} color="#f59e0b" />
+                      <Text style={[styles.messageText, { color: '#f59e0b', fontWeight: '700' }]}>
+                        Schedule Overlap Detected
+                      </Text>
+                    </View>
                     <Text style={{ fontSize: 12, color: colors.text }}>{conflictWarning}</Text>
                     <TouchableOpacity
                       onPress={() => setConflictAcknowledged(!conflictAcknowledged)}
                       style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}
                     >
-                      <Text style={{ fontSize: 16 }}>{conflictAcknowledged ? '☑️' : '⬜'}</Text>
+                      <Ionicons
+                        name={conflictAcknowledged ? 'checkbox' : 'square-outline'}
+                        size={18}
+                        color={conflictAcknowledged ? colors.accent : colors.textMuted}
+                      />
                       <Text style={{ fontSize: 12, color: colors.text, fontWeight: '600' }}>
                         I understand there is an overlap, proceed anyway.
                       </Text>
@@ -692,10 +736,15 @@ export default function MeetingsScreen() {
                       onPress={() => setForm({ ...form, location_type: type })}
                       style={[
                         styles.filterPill,
-                        { borderColor: colors.border, backgroundColor: colors.bgMuted },
+                        { borderColor: colors.border, backgroundColor: colors.bgMuted, flexDirection: 'row', alignItems: 'center', gap: 6 },
                         form.location_type === type && { backgroundColor: colors.accent, borderColor: colors.accent },
                       ]}
                     >
+                      <Ionicons
+                        name={type === 'ONLINE' ? 'videocam-outline' : 'location-outline'}
+                        size={14}
+                        color={form.location_type === type ? (isDark ? colors.accentDark : '#ffffff') : colors.textMuted}
+                      />
                       <Text
                         style={[
                           styles.filterPillText,
@@ -703,7 +752,7 @@ export default function MeetingsScreen() {
                           form.location_type === type && { color: isDark ? colors.accentDark : '#ffffff', fontWeight: '700' },
                         ]}
                       >
-                        {type === 'ONLINE' ? '📹 Online' : '📍 In-Person'}
+                        {type === 'ONLINE' ? 'Online' : 'In-Person'}
                       </Text>
                     </TouchableOpacity>
                   ))}

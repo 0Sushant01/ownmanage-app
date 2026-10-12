@@ -16,6 +16,7 @@ import { AppPressable } from '../../src/components/AppPressable'
 import { Screen } from '../../src/components/Screen'
 import { type as typeStyle, getCardShadow } from '../../src/theme'
 import { useAppTheme } from '../../src/context/ThemeContext'
+import { Ionicons } from '@expo/vector-icons'
 
 interface StatusConfig {
   dot: string
@@ -347,15 +348,15 @@ export default function CalendarScreen() {
               {/* Info Rows */}
               <View style={styles.modalBody}>
                 {selectedDay.holiday_name ? (
-                  <ModalRow icon="🎉" label="Holiday:" value={selectedDay.holiday_name} valueColor="#a78bfa" bgColor={colors.bgMuted} labelColor={colors.textMuted} textColor={colors.text} />
+                  <ModalRow icon={<Ionicons name="sparkles-outline" size={14} color="#a78bfa" />} label="Holiday:" value={selectedDay.holiday_name} valueColor="#a78bfa" bgColor={colors.bgMuted} labelColor={colors.textMuted} textColor={colors.text} />
                 ) : null}
                 {selectedDay.leave_type ? (
-                  <ModalRow icon="🏖️" label="Leave Type:" value={selectedDay.leave_type} valueColor={colors.info} bgColor={colors.bgMuted} labelColor={colors.textMuted} textColor={colors.text} />
+                  <ModalRow icon={<Ionicons name="briefcase-outline" size={14} color={colors.info} />} label="Leave Type:" value={selectedDay.leave_type} valueColor={colors.info} bgColor={colors.bgMuted} labelColor={colors.textMuted} textColor={colors.text} />
                 ) : null}
-                <ModalRow icon="➔" label="Check In:" value={selectedDay.check_in || '—'} bgColor={colors.bgMuted} labelColor={colors.textMuted} textColor={colors.text} />
-                <ModalRow icon="➔" label="Check Out:" value={selectedDay.check_out || '—'} bgColor={colors.bgMuted} labelColor={colors.textMuted} textColor={colors.text} />
+                <ModalRow icon={<Ionicons name="log-in-outline" size={14} color={colors.textMuted} />} label="Check In:" value={selectedDay.check_in || '—'} bgColor={colors.bgMuted} labelColor={colors.textMuted} textColor={colors.text} />
+                <ModalRow icon={<Ionicons name="log-out-outline" size={14} color={colors.textMuted} />} label="Check Out:" value={selectedDay.check_out || '—'} bgColor={colors.bgMuted} labelColor={colors.textMuted} textColor={colors.text} />
                 <ModalRow
-                  icon="⏱️"
+                  icon={<Ionicons name="time-outline" size={14} color={colors.success} />}
                   label="Working Hours:"
                   value={selectedDay.work_hours || '00h 00m'}
                   valueColor={colors.success}
@@ -363,7 +364,7 @@ export default function CalendarScreen() {
                   labelColor={colors.textMuted}
                   textColor={colors.text}
                 />
-                <ModalRow icon="⏰" label="Overtime:" value="—" bgColor={colors.bgMuted} labelColor={colors.textMuted} textColor={colors.text} />
+                <ModalRow icon={<Ionicons name="hourglass-outline" size={14} color={colors.textMuted} />} label="Overtime:" value="—" bgColor={colors.bgMuted} labelColor={colors.textMuted} textColor={colors.text} />
               </View>
 
               {/* Close button */}
@@ -422,7 +423,7 @@ function ModalRow({
   labelColor,
   textColor,
 }: {
-  icon: string
+  icon: React.ReactNode
   label: string
   value: string
   valueColor?: string
@@ -433,7 +434,7 @@ function ModalRow({
   return (
     <View style={[styles.modalRow, { backgroundColor: bgColor }]}>
       <View style={styles.modalRowLeft}>
-        <Text style={[styles.modalRowIcon, { color: labelColor }]}>{icon}</Text>
+        <View style={styles.modalRowIcon}>{icon}</View>
         <Text style={[styles.modalRowLabel, { color: labelColor }]}>{label}</Text>
       </View>
       <Text style={[styles.modalRowValue, { color: valueColor || textColor }]}>
@@ -696,7 +697,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   modalRowIcon: {
-    fontSize: 13,
+    width: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalRowLabel: {
     fontSize: 12,
